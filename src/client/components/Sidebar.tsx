@@ -26,13 +26,13 @@ export function Sidebar({
             target="_top"
             className="font-semibold text-base-content hover:text-primary transition-colors"
           >
-            Every App
+            OpenSEO
           </a>
           {onClose && (
             <button
               onClick={onClose}
               className="btn btn-ghost btn-sm btn-circle"
-              aria-label="Close sidebar"
+              aria-label="Cerrar menú"
             >
               <X className="h-5 w-5" />
             </button>
@@ -54,13 +54,13 @@ export function Sidebar({
           target="_top"
           className="font-semibold text-base-content hover:text-primary transition-colors"
         >
-          Every App
+          OpenSEO
         </a>
         {onClose && (
           <button
             onClick={onClose}
             className="btn btn-ghost btn-sm btn-circle"
-            aria-label="Close sidebar"
+            aria-label="Cerrar menú"
           >
             <X className="h-5 w-5" />
           </button>
@@ -71,10 +71,10 @@ export function Sidebar({
       <div className="px-3 py-3 border-b border-base-300">
         <div
           className="tooltip tooltip-bottom w-full"
-          data-tip="Multiple projects coming soon"
+          data-tip="Próximamente: múltiples proyectos"
         >
           <button className="btn btn-ghost btn-sm w-full justify-between font-medium text-sm cursor-default">
-            <span className="truncate">Default</span>
+            <span className="truncate">Predeterminado</span>
             <ChevronsUpDown className="size-3.5 shrink-0 text-base-content/40" />
           </button>
         </div>

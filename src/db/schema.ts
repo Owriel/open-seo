@@ -96,6 +96,56 @@ export const keywordMetrics = sqliteTable(
 );
 
 // ============================================================================
+// Rank Tracker tables
+// ============================================================================
+
+// Keywords being tracked for position monitoring
+export const trackedKeywords = sqliteTable(
+  "tracked_keywords",
+  {
+    id: text("id").primaryKey(),
+    projectId: text("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    keyword: text("keyword").notNull(),
+    domain: text("domain").notNull(),
+    locationCode: integer("location_code").notNull().default(2724),
+    languageCode: text("language_code").notNull().default("es"),
+    createdAt: text("created_at")
+      .notNull()
+      .default(sql`(current_timestamp)`),
+  },
+  (table) => [
+    uniqueIndex("tracked_keywords_unique").on(
+      table.projectId,
+      table.keyword,
+      table.domain,
+      table.locationCode,
+    ),
+    index("tracked_keywords_project_idx").on(table.projectId),
+  ],
+);
+
+// Historical position data for tracked keywords
+export const rankHistory = sqliteTable(
+  "rank_history",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    trackedKeywordId: text("tracked_keyword_id")
+      .notNull()
+      .references(() => trackedKeywords.id, { onDelete: "cascade" }),
+    position: integer("position"), // null means not ranking
+    url: text("url"), // URL that ranks
+    checkedAt: text("checked_at")
+      .notNull()
+      .default(sql`(current_timestamp)`),
+  },
+  (table) => [
+    index("rank_history_keyword_idx").on(table.trackedKeywordId, table.checkedAt),
+  ],
+);
+
+// ============================================================================
 // Site Audit tables
 // ============================================================================
 
@@ -215,6 +265,31 @@ export const auditPsiResults = sqliteTable(
     payloadSizeBytes: integer("payload_size_bytes"),
   },
   (table) => [index("audit_psi_results_audit_id_idx").on(table.auditId)],
+);
+
+// ============================================================================
+// Cache management
+// ============================================================================
+
+export const cacheEntries = sqliteTable(
+  "cache_entries",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    kvKey: text("kv_key").notNull(),
+    label: text("label").notNull(),
+    category: text("category").notNull().default("general"),
+    paramsJson: text("params_json"),
+    createdAt: text("created_at")
+      .notNull()
+      .default(sql`(current_timestamp)`),
+    expiresAt: text("expires_at").notNull(),
+    extendedCount: integer("extended_count").notNull().default(0),
+  },
+  (table) => [
+    uniqueIndex("cache_entries_kv_key_idx").on(table.kvKey),
+    index("cache_entries_expires_at_idx").on(table.expiresAt),
+    index("cache_entries_category_idx").on(table.category),
+  ],
 );
 
 // One row per on-demand PSI check (full raw in R2)

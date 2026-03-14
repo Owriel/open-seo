@@ -6,10 +6,10 @@ import {
   type DomainRankedKeywordItem,
 } from "@/server/lib/dataforseo";
 import { sortBy } from "remeda";
-import { buildCacheKey, getCached, setCached } from "@/server/lib/kv-cache";
+import { buildCacheKey, getCached, setCached, CACHE_TTL_SECONDS } from "@/server/lib/kv-cache";
 
-/** Domain overview data is refreshed every 12 hours. */
-const DOMAIN_OVERVIEW_TTL_SECONDS = 12 * 60 * 60;
+/** Domain overview — 30 days cache */
+const DOMAIN_OVERVIEW_TTL_SECONDS = CACHE_TTL_SECONDS;
 
 type DomainOverviewResult = {
   domain: string;
@@ -108,7 +108,10 @@ async function getOverview(input: {
 
   // Persist to KV (fire-and-forget; don't block response)
   if (result.hasData) {
-    void setCached(cacheKey, result, DOMAIN_OVERVIEW_TTL_SECONDS).catch(
+    void setCached(cacheKey, result, DOMAIN_OVERVIEW_TTL_SECONDS, {
+      label: `Dominio: ${input.domain}`,
+      params: { domain: input.domain, locationCode: input.locationCode },
+    }).catch(
       (error) => {
         console.error("domain.overview.cache-write failed:", error);
       },

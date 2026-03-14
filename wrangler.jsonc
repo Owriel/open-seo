@@ -14,23 +14,20 @@
       "class_name": "SiteAuditWorkflow",
     },
   ],
-  "services": [
-    {
-      "binding": "EVERY_APP_GATEWAY",
-      "service": "every-app-gateway",
-    },
-  ],
+  "vars": {
+    "AUTH_SECRET": "openseo-hmac-secret-k8x2m9p4"
+  },
   "kv_namespaces": [
     {
       "binding": "KV",
-      "id": "4abd52f3f2c549ac83cc2cb4ceec8620",
+      "id": "050580d9a03d4bb68d83dccee470045f",
     },
   ],
   "d1_databases": [
     {
       "binding": "DB",
       "database_name": "every-open-seo",
-      "database_id": "dc7eb9f1-9a43-4d37-9bc9-1293a9200f13",
+      "database_id": "6b64e8e0-9450-4b39-8e52-f1a16a366449",
       "migrations_dir": "drizzle",
     },
   ],

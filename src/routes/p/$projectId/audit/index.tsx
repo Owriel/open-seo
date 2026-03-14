@@ -34,7 +34,11 @@ import {
   Download,
   ChevronDown,
   Settings,
+  ShieldAlert,
+  Wrench,
+  ChevronRight,
 } from "lucide-react";
+import { analyzeSeoIssues, type SeoIssue, type SeoIssueSeverity } from "@/client/features/audit/seo-issues";
 
 const SUPPORT_URL = "https://everyapp.dev/support";
 
@@ -929,7 +933,9 @@ function ResultsView({
 }) {
   const { audit, pages, psi } = data;
   const hasPerformanceTab = psi.length > 0;
-  const activeTab = hasPerformanceTab ? tab : "pages";
+  const activeTab = tab === "issues" ? "issues" : hasPerformanceTab ? tab : "pages";
+
+  const seoIssues = useMemo(() => analyzeSeoIssues(pages), [pages]);
 
   const averageResponseMs = useMemo(() => {
     if (pages.length === 0) return 0;
@@ -967,10 +973,24 @@ function ResultsView({
   return (
     <>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <StatCard label="Pages Crawled" value={String(audit.pagesCrawled)} />
-        <StatCard label="Total URLs" value={String(pages.length)} />
-        <StatCard label="PSI Tests" value={String(psi.length)} />
-        <StatCard label="Avg Response" value={`${averageResponseMs}ms`} />
+        <StatCard
+          label="SEO Score"
+          value={String(seoIssues.score)}
+          className={
+            seoIssues.score >= 80
+              ? "text-success"
+              : seoIssues.score >= 50
+                ? "text-warning"
+                : "text-error"
+          }
+        />
+        <StatCard label="Páginas" value={String(pages.length)} />
+        <StatCard
+          label="Errores"
+          value={String(seoIssues.errors)}
+          className={seoIssues.errors > 0 ? "text-error" : "text-success"}
+        />
+        <StatCard label="Resp. Media" value={`${averageResponseMs}ms`} />
         {psi.length > 0 && (
           <>
             <StatCard
@@ -1034,26 +1054,31 @@ function ResultsView({
       <div className="card bg-base-100 border border-base-300">
         <div className="card-body gap-3">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-            {hasPerformanceTab ? (
-              <div role="tablist" className="tabs tabs-box w-fit">
-                <button
-                  role="tab"
-                  className={`tab ${activeTab === "pages" ? "tab-active" : ""}`}
-                  onClick={() => setSearchParams({ tab: "pages" })}
-                >
-                  Pages ({pages.length})
-                </button>
+            <div role="tablist" className="tabs tabs-box w-fit">
+              <button
+                role="tab"
+                className={`tab ${activeTab === "issues" ? "tab-active" : ""}`}
+                onClick={() => setSearchParams({ tab: "issues" })}
+              >
+                Problemas ({seoIssues.issues.length})
+              </button>
+              <button
+                role="tab"
+                className={`tab ${activeTab === "pages" ? "tab-active" : ""}`}
+                onClick={() => setSearchParams({ tab: "pages" })}
+              >
+                Páginas ({pages.length})
+              </button>
+              {hasPerformanceTab && (
                 <button
                   role="tab"
                   className={`tab ${activeTab === "performance" ? "tab-active" : ""}`}
                   onClick={() => setSearchParams({ tab: "performance" })}
                 >
-                  Performance ({psi.length})
+                  Rendimiento ({psi.length})
                 </button>
-              </div>
-            ) : (
-              <h3 className="text-base font-medium">Pages ({pages.length})</h3>
-            )}
+              )}
+            </div>
 
             <ExportDropdown
               onExport={(format) => {
@@ -1065,6 +1090,10 @@ function ResultsView({
               }}
             />
           </div>
+
+          {activeTab === "issues" && (
+            <SeoIssuesTab issues={seoIssues.issues} summary={seoIssues} />
+          )}
 
           {activeTab === "pages" && (
             <div className="overflow-x-auto">
@@ -1441,6 +1470,222 @@ function ExportDropdown({
           <button onClick={() => onExport("json")}>JSON</button>
         </li>
       </ul>
+    </div>
+  );
+}
+
+function SeoIssuesTab({
+  issues,
+  summary,
+}: {
+  issues: SeoIssue[];
+  summary: { errors: number; warnings: number; infos: number; score: number };
+}) {
+  const [expandedIssues, setExpandedIssues] = useState<Set<string>>(new Set());
+
+  const toggleIssue = (id: string) => {
+    setExpandedIssues((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleExportIssuesCsv = () => {
+    if (issues.length === 0) return;
+    const headers = [
+      "Severidad",
+      "Categoría",
+      "Problema",
+      "Descripción",
+      "Cómo Arreglar",
+      "Páginas Afectadas",
+    ];
+    const rows = issues.map((issue) =>
+      [
+        issue.severity,
+        issue.category,
+        issue.title,
+        issue.description,
+        issue.howToFix,
+        issue.affectedPages.length,
+      ]
+        .map((v) => csvEscape(v))
+        .join(","),
+    );
+    const csv = [headers.map(csvEscape).join(","), ...rows].join("\n");
+    downloadFile(csv, "seo-issues.csv", "text/csv");
+  };
+
+  if (issues.length === 0) {
+    return (
+      <div className="text-center py-8">
+        <CheckCircle className="size-12 mx-auto text-success/50 mb-3" />
+        <p className="text-lg font-medium text-base-content/70">
+          Sin problemas SEO detectados
+        </p>
+        <p className="text-sm text-base-content/50">
+          El sitio tiene buenas prácticas SEO básicas.
+        </p>
+      </div>
+    );
+  }
+
+  const severityBadge = (severity: SeoIssueSeverity) => {
+    switch (severity) {
+      case "error":
+        return "badge-error";
+      case "warning":
+        return "badge-warning";
+      case "info":
+        return "badge-info";
+    }
+  };
+
+  const severityLabel = (severity: SeoIssueSeverity) => {
+    switch (severity) {
+      case "error":
+        return "Error";
+      case "warning":
+        return "Aviso";
+      case "info":
+        return "Info";
+    }
+  };
+
+  const categoryLabel = (category: string) => {
+    switch (category) {
+      case "technical":
+        return "Técnico";
+      case "onpage":
+        return "On-Page";
+      case "content":
+        return "Contenido";
+      case "images":
+        return "Imágenes";
+      case "links":
+        return "Enlaces";
+      default:
+        return category;
+    }
+  };
+
+  return (
+    <div className="space-y-3">
+      {/* Semáforo summary */}
+      <div className="flex items-center justify-between">
+        <div className="flex gap-3">
+          <span className="badge border border-error/30 bg-error/10 text-error gap-1">
+            <ShieldAlert className="size-3" />
+            {summary.errors} errores
+          </span>
+          <span className="badge border border-warning/30 bg-warning/10 text-warning gap-1">
+            <AlertCircle className="size-3" />
+            {summary.warnings} avisos
+          </span>
+          <span className="badge border border-info/30 bg-info/10 text-info gap-1">
+            {summary.infos} info
+          </span>
+        </div>
+        <button
+          className="btn btn-ghost btn-xs gap-1"
+          onClick={handleExportIssuesCsv}
+        >
+          <Download className="size-3.5" />
+          CSV
+        </button>
+      </div>
+
+      {/* Issues list */}
+      {issues.map((issue) => {
+        const isExpanded = expandedIssues.has(issue.id);
+        return (
+          <div
+            key={issue.id}
+            className="border border-base-300 rounded-lg bg-base-200/30 overflow-hidden"
+          >
+            <button
+              className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-base-200/50 transition-colors"
+              onClick={() => toggleIssue(issue.id)}
+            >
+              <ChevronRight
+                className={`size-4 text-base-content/40 shrink-0 transition-transform ${
+                  isExpanded ? "rotate-90" : ""
+                }`}
+              />
+              <div className="flex-1 min-w-0">
+                <p className="font-medium text-sm">{issue.title}</p>
+                <div className="flex items-center gap-2 mt-1">
+                  <span
+                    className={`badge badge-xs ${severityBadge(issue.severity)}`}
+                  >
+                    {severityLabel(issue.severity)}
+                  </span>
+                  <span className="badge badge-xs badge-outline">
+                    {categoryLabel(issue.category)}
+                  </span>
+                  <span className="text-xs text-base-content/40">
+                    {issue.affectedPages.length} página
+                    {issue.affectedPages.length !== 1 ? "s" : ""}
+                  </span>
+                </div>
+              </div>
+            </button>
+
+            {isExpanded && (
+              <div className="px-4 pb-4 pt-1 space-y-3 border-t border-base-300/50">
+                <p className="text-sm text-base-content/70">
+                  {issue.description}
+                </p>
+                <div className="bg-success/5 border border-success/20 rounded-lg p-3">
+                  <p className="text-xs font-semibold text-success flex items-center gap-1 mb-1">
+                    <Wrench className="size-3" />
+                    Cómo arreglarlo
+                  </p>
+                  <p className="text-sm text-base-content/80">
+                    {issue.howToFix}
+                  </p>
+                </div>
+                {issue.affectedPages.length > 0 && (
+                  <details className="text-sm">
+                    <summary className="cursor-pointer font-medium text-base-content/60 text-xs">
+                      Ver páginas afectadas ({issue.affectedPages.length})
+                    </summary>
+                    <div className="mt-2 space-y-1 max-h-48 overflow-y-auto">
+                      {issue.affectedPages.slice(0, 50).map((ap, idx) => (
+                        <div
+                          key={idx}
+                          className="flex items-center gap-2 text-xs"
+                        >
+                          <a
+                            href={ap.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="link link-primary truncate max-w-[300px]"
+                          >
+                            {extractPathname(ap.url)}
+                          </a>
+                          {ap.detail && (
+                            <span className="text-base-content/40 truncate">
+                              {ap.detail}
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                      {issue.affectedPages.length > 50 && (
+                        <p className="text-base-content/40 text-xs">
+                          ...y {issue.affectedPages.length - 50} más
+                        </p>
+                      )}
+                    </div>
+                  </details>
+                )}
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }

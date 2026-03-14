@@ -1,15 +1,16 @@
 import { isErrorCode, type ErrorCode } from "@/shared/error-codes";
 
 const STANDARD_MESSAGES: Record<ErrorCode, string> = {
-  UNAUTHENTICATED: "Please sign in and try again.",
-  FORBIDDEN: "You do not have access to this resource.",
-  NOT_FOUND: "The requested resource was not found.",
-  VALIDATION_ERROR: "Please check your input and try again.",
-  CRAWL_TARGET_BLOCKED: "This crawl target is blocked by security policy.",
-  RATE_LIMITED: "Too many requests. Please wait and try again.",
-  CONFLICT: "This request conflicts with existing data.",
+  UNAUTHENTICATED: "Inicia sesión e inténtalo de nuevo.",
+  FORBIDDEN: "No tienes acceso a este recurso.",
+  NOT_FOUND: "El recurso solicitado no fue encontrado.",
+  VALIDATION_ERROR: "Revisa los datos introducidos e inténtalo de nuevo.",
+  CRAWL_TARGET_BLOCKED:
+    "Este objetivo está bloqueado por la política de seguridad.",
+  RATE_LIMITED: "Demasiadas solicitudes. Espera e inténtalo de nuevo.",
+  CONFLICT: "Esta solicitud entra en conflicto con datos existentes.",
   INTERNAL_ERROR:
-    "An unexpected error occurred. Please check server logs and try again.",
+    "Ha ocurrido un error inesperado. Revisa los logs del servidor e inténtalo de nuevo.",
 };
 
 export function getStandardErrorMessage(

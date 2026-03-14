@@ -12,9 +12,14 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PProjectIdRouteRouteImport } from './routes/p/$projectId/route'
 import { Route as PProjectIdIndexRouteImport } from './routes/p/$projectId/index'
+import { Route as PProjectIdTrackerRouteImport } from './routes/p/$projectId/tracker'
 import { Route as PProjectIdSavedRouteImport } from './routes/p/$projectId/saved'
+import { Route as PProjectIdMultilangRouteImport } from './routes/p/$projectId/multilang'
+import { Route as PProjectIdLocalRouteImport } from './routes/p/$projectId/local'
 import { Route as PProjectIdKeywordsRouteImport } from './routes/p/$projectId/keywords'
 import { Route as PProjectIdDomainRouteImport } from './routes/p/$projectId/domain'
+import { Route as PProjectIdCompetitorsRouteImport } from './routes/p/$projectId/competitors'
+import { Route as PProjectIdCacheRouteImport } from './routes/p/$projectId/cache'
 import { Route as PProjectIdAuditRouteImport } from './routes/p/$projectId/audit'
 import { Route as PProjectIdAiRouteImport } from './routes/p/$projectId/ai'
 import { Route as PProjectIdAuditIndexRouteImport } from './routes/p/$projectId/audit/index'
@@ -36,9 +41,24 @@ const PProjectIdIndexRoute = PProjectIdIndexRouteImport.update({
   path: '/',
   getParentRoute: () => PProjectIdRouteRoute,
 } as any)
+const PProjectIdTrackerRoute = PProjectIdTrackerRouteImport.update({
+  id: '/tracker',
+  path: '/tracker',
+  getParentRoute: () => PProjectIdRouteRoute,
+} as any)
 const PProjectIdSavedRoute = PProjectIdSavedRouteImport.update({
   id: '/saved',
   path: '/saved',
+  getParentRoute: () => PProjectIdRouteRoute,
+} as any)
+const PProjectIdMultilangRoute = PProjectIdMultilangRouteImport.update({
+  id: '/multilang',
+  path: '/multilang',
+  getParentRoute: () => PProjectIdRouteRoute,
+} as any)
+const PProjectIdLocalRoute = PProjectIdLocalRouteImport.update({
+  id: '/local',
+  path: '/local',
   getParentRoute: () => PProjectIdRouteRoute,
 } as any)
 const PProjectIdKeywordsRoute = PProjectIdKeywordsRouteImport.update({
@@ -49,6 +69,16 @@ const PProjectIdKeywordsRoute = PProjectIdKeywordsRouteImport.update({
 const PProjectIdDomainRoute = PProjectIdDomainRouteImport.update({
   id: '/domain',
   path: '/domain',
+  getParentRoute: () => PProjectIdRouteRoute,
+} as any)
+const PProjectIdCompetitorsRoute = PProjectIdCompetitorsRouteImport.update({
+  id: '/competitors',
+  path: '/competitors',
+  getParentRoute: () => PProjectIdRouteRoute,
+} as any)
+const PProjectIdCacheRoute = PProjectIdCacheRouteImport.update({
+  id: '/cache',
+  path: '/cache',
   getParentRoute: () => PProjectIdRouteRoute,
 } as any)
 const PProjectIdAuditRoute = PProjectIdAuditRouteImport.update({
@@ -84,9 +114,14 @@ export interface FileRoutesByFullPath {
   '/p/$projectId': typeof PProjectIdRouteRouteWithChildren
   '/p/$projectId/ai': typeof PProjectIdAiRoute
   '/p/$projectId/audit': typeof PProjectIdAuditRouteWithChildren
+  '/p/$projectId/cache': typeof PProjectIdCacheRoute
+  '/p/$projectId/competitors': typeof PProjectIdCompetitorsRoute
   '/p/$projectId/domain': typeof PProjectIdDomainRoute
   '/p/$projectId/keywords': typeof PProjectIdKeywordsRoute
+  '/p/$projectId/local': typeof PProjectIdLocalRoute
+  '/p/$projectId/multilang': typeof PProjectIdMultilangRoute
   '/p/$projectId/saved': typeof PProjectIdSavedRoute
+  '/p/$projectId/tracker': typeof PProjectIdTrackerRoute
   '/p/$projectId/': typeof PProjectIdIndexRoute
   '/p/$projectId/audit/': typeof PProjectIdAuditIndexRoute
   '/p/$projectId/audit/issues/$resultId': typeof PProjectIdAuditIssuesResultIdRoute
@@ -95,9 +130,14 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/p/$projectId/ai': typeof PProjectIdAiRoute
+  '/p/$projectId/cache': typeof PProjectIdCacheRoute
+  '/p/$projectId/competitors': typeof PProjectIdCompetitorsRoute
   '/p/$projectId/domain': typeof PProjectIdDomainRoute
   '/p/$projectId/keywords': typeof PProjectIdKeywordsRoute
+  '/p/$projectId/local': typeof PProjectIdLocalRoute
+  '/p/$projectId/multilang': typeof PProjectIdMultilangRoute
   '/p/$projectId/saved': typeof PProjectIdSavedRoute
+  '/p/$projectId/tracker': typeof PProjectIdTrackerRoute
   '/p/$projectId': typeof PProjectIdIndexRoute
   '/p/$projectId/audit': typeof PProjectIdAuditIndexRoute
   '/p/$projectId/audit/issues/$resultId': typeof PProjectIdAuditIssuesResultIdRoute
@@ -109,9 +149,14 @@ export interface FileRoutesById {
   '/p/$projectId': typeof PProjectIdRouteRouteWithChildren
   '/p/$projectId/ai': typeof PProjectIdAiRoute
   '/p/$projectId/audit': typeof PProjectIdAuditRouteWithChildren
+  '/p/$projectId/cache': typeof PProjectIdCacheRoute
+  '/p/$projectId/competitors': typeof PProjectIdCompetitorsRoute
   '/p/$projectId/domain': typeof PProjectIdDomainRoute
   '/p/$projectId/keywords': typeof PProjectIdKeywordsRoute
+  '/p/$projectId/local': typeof PProjectIdLocalRoute
+  '/p/$projectId/multilang': typeof PProjectIdMultilangRoute
   '/p/$projectId/saved': typeof PProjectIdSavedRoute
+  '/p/$projectId/tracker': typeof PProjectIdTrackerRoute
   '/p/$projectId/': typeof PProjectIdIndexRoute
   '/p/$projectId/audit/': typeof PProjectIdAuditIndexRoute
   '/p/$projectId/audit/issues/$resultId': typeof PProjectIdAuditIssuesResultIdRoute
@@ -124,9 +169,14 @@ export interface FileRouteTypes {
     | '/p/$projectId'
     | '/p/$projectId/ai'
     | '/p/$projectId/audit'
+    | '/p/$projectId/cache'
+    | '/p/$projectId/competitors'
     | '/p/$projectId/domain'
     | '/p/$projectId/keywords'
+    | '/p/$projectId/local'
+    | '/p/$projectId/multilang'
     | '/p/$projectId/saved'
+    | '/p/$projectId/tracker'
     | '/p/$projectId/'
     | '/p/$projectId/audit/'
     | '/p/$projectId/audit/issues/$resultId'
@@ -135,9 +185,14 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/p/$projectId/ai'
+    | '/p/$projectId/cache'
+    | '/p/$projectId/competitors'
     | '/p/$projectId/domain'
     | '/p/$projectId/keywords'
+    | '/p/$projectId/local'
+    | '/p/$projectId/multilang'
     | '/p/$projectId/saved'
+    | '/p/$projectId/tracker'
     | '/p/$projectId'
     | '/p/$projectId/audit'
     | '/p/$projectId/audit/issues/$resultId'
@@ -148,9 +203,14 @@ export interface FileRouteTypes {
     | '/p/$projectId'
     | '/p/$projectId/ai'
     | '/p/$projectId/audit'
+    | '/p/$projectId/cache'
+    | '/p/$projectId/competitors'
     | '/p/$projectId/domain'
     | '/p/$projectId/keywords'
+    | '/p/$projectId/local'
+    | '/p/$projectId/multilang'
     | '/p/$projectId/saved'
+    | '/p/$projectId/tracker'
     | '/p/$projectId/'
     | '/p/$projectId/audit/'
     | '/p/$projectId/audit/issues/$resultId'
@@ -185,11 +245,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PProjectIdIndexRouteImport
       parentRoute: typeof PProjectIdRouteRoute
     }
+    '/p/$projectId/tracker': {
+      id: '/p/$projectId/tracker'
+      path: '/tracker'
+      fullPath: '/p/$projectId/tracker'
+      preLoaderRoute: typeof PProjectIdTrackerRouteImport
+      parentRoute: typeof PProjectIdRouteRoute
+    }
     '/p/$projectId/saved': {
       id: '/p/$projectId/saved'
       path: '/saved'
       fullPath: '/p/$projectId/saved'
       preLoaderRoute: typeof PProjectIdSavedRouteImport
+      parentRoute: typeof PProjectIdRouteRoute
+    }
+    '/p/$projectId/multilang': {
+      id: '/p/$projectId/multilang'
+      path: '/multilang'
+      fullPath: '/p/$projectId/multilang'
+      preLoaderRoute: typeof PProjectIdMultilangRouteImport
+      parentRoute: typeof PProjectIdRouteRoute
+    }
+    '/p/$projectId/local': {
+      id: '/p/$projectId/local'
+      path: '/local'
+      fullPath: '/p/$projectId/local'
+      preLoaderRoute: typeof PProjectIdLocalRouteImport
       parentRoute: typeof PProjectIdRouteRoute
     }
     '/p/$projectId/keywords': {
@@ -204,6 +285,20 @@ declare module '@tanstack/react-router' {
       path: '/domain'
       fullPath: '/p/$projectId/domain'
       preLoaderRoute: typeof PProjectIdDomainRouteImport
+      parentRoute: typeof PProjectIdRouteRoute
+    }
+    '/p/$projectId/competitors': {
+      id: '/p/$projectId/competitors'
+      path: '/competitors'
+      fullPath: '/p/$projectId/competitors'
+      preLoaderRoute: typeof PProjectIdCompetitorsRouteImport
+      parentRoute: typeof PProjectIdRouteRoute
+    }
+    '/p/$projectId/cache': {
+      id: '/p/$projectId/cache'
+      path: '/cache'
+      fullPath: '/p/$projectId/cache'
+      preLoaderRoute: typeof PProjectIdCacheRouteImport
       parentRoute: typeof PProjectIdRouteRoute
     }
     '/p/$projectId/audit': {
@@ -261,9 +356,14 @@ const PProjectIdAuditRouteWithChildren = PProjectIdAuditRoute._addFileChildren(
 interface PProjectIdRouteRouteChildren {
   PProjectIdAiRoute: typeof PProjectIdAiRoute
   PProjectIdAuditRoute: typeof PProjectIdAuditRouteWithChildren
+  PProjectIdCacheRoute: typeof PProjectIdCacheRoute
+  PProjectIdCompetitorsRoute: typeof PProjectIdCompetitorsRoute
   PProjectIdDomainRoute: typeof PProjectIdDomainRoute
   PProjectIdKeywordsRoute: typeof PProjectIdKeywordsRoute
+  PProjectIdLocalRoute: typeof PProjectIdLocalRoute
+  PProjectIdMultilangRoute: typeof PProjectIdMultilangRoute
   PProjectIdSavedRoute: typeof PProjectIdSavedRoute
+  PProjectIdTrackerRoute: typeof PProjectIdTrackerRoute
   PProjectIdIndexRoute: typeof PProjectIdIndexRoute
   PProjectIdPsiIssuesResultIdRoute: typeof PProjectIdPsiIssuesResultIdRoute
 }
@@ -271,9 +371,14 @@ interface PProjectIdRouteRouteChildren {
 const PProjectIdRouteRouteChildren: PProjectIdRouteRouteChildren = {
   PProjectIdAiRoute: PProjectIdAiRoute,
   PProjectIdAuditRoute: PProjectIdAuditRouteWithChildren,
+  PProjectIdCacheRoute: PProjectIdCacheRoute,
+  PProjectIdCompetitorsRoute: PProjectIdCompetitorsRoute,
   PProjectIdDomainRoute: PProjectIdDomainRoute,
   PProjectIdKeywordsRoute: PProjectIdKeywordsRoute,
+  PProjectIdLocalRoute: PProjectIdLocalRoute,
+  PProjectIdMultilangRoute: PProjectIdMultilangRoute,
   PProjectIdSavedRoute: PProjectIdSavedRoute,
+  PProjectIdTrackerRoute: PProjectIdTrackerRoute,
   PProjectIdIndexRoute: PProjectIdIndexRoute,
   PProjectIdPsiIssuesResultIdRoute: PProjectIdPsiIssuesResultIdRoute,
 }

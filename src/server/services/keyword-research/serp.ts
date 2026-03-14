@@ -1,10 +1,10 @@
 import { fetchHistoricalSerpsRaw } from "@/server/lib/dataforseo";
-import { buildCacheKey, getCached, setCached } from "@/server/lib/kv-cache";
+import { buildCacheKey, getCached, setCached, CACHE_TTL_SECONDS } from "@/server/lib/kv-cache";
 
 import type { SerpResultItem } from "@/types/keywords";
 import { normalizeKeyword } from "./helpers";
 
-const SERP_CACHE_TTL_SECONDS = 12 * 60 * 60;
+const SERP_CACHE_TTL_SECONDS = CACHE_TTL_SECONDS;
 
 export async function getSerpAnalysis(input: {
   keyword: string;
@@ -56,7 +56,10 @@ export async function getSerpAnalysis(input: {
   const result = { items };
 
   if (items.length > 0) {
-    void setCached(cacheKey, result, SERP_CACHE_TTL_SECONDS).catch((error) => {
+    void setCached(cacheKey, result, SERP_CACHE_TTL_SECONDS, {
+      label: `SERP: ${keyword}`,
+      params: { keyword, locationCode: input.locationCode },
+    }).catch((error) => {
       console.error("keywords.serp.cache-write failed:", error);
     });
   }

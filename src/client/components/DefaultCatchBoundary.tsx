@@ -11,7 +11,7 @@ export function DefaultCatchBoundary({ error }: ErrorComponentProps) {
 
   const message = getStandardErrorMessage(
     error,
-    "Something went wrong. Please try again.",
+    "Algo salió mal. Inténtalo de nuevo.",
   );
 
   return (
@@ -24,11 +24,11 @@ export function DefaultCatchBoundary({ error }: ErrorComponentProps) {
           }}
           className="btn btn-neutral btn-sm uppercase"
         >
-          Try Again
+          Reintentar
         </button>
         {isRoot ? (
           <Link to="/" className="btn btn-neutral btn-sm uppercase">
-            Home
+            Inicio
           </Link>
         ) : (
           <Link
@@ -39,7 +39,7 @@ export function DefaultCatchBoundary({ error }: ErrorComponentProps) {
               window.history.back();
             }}
           >
-            Go Back
+            Volver
           </Link>
         )}
       </div>

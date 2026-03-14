@@ -32,10 +32,10 @@ function SavedKeywordsPage() {
       void queryClient.invalidateQueries({
         queryKey: ["savedKeywords", projectId],
       });
-      toast.success("Keyword removed");
+      toast.success("Keyword eliminada");
     },
     onError: (error) => {
-      setRemoveError(getStandardErrorMessage(error, "Remove failed."));
+      setRemoveError(getStandardErrorMessage(error, "Error al eliminar."));
     },
   });
 
@@ -53,7 +53,7 @@ function SavedKeywordsPage() {
 
   const exportCsv = () => {
     if (savedKeywords.length === 0) {
-      toast.error("No keywords to export");
+      toast.error("No hay keywords para exportar");
       return;
     }
 
@@ -64,6 +64,7 @@ function SavedKeywordsPage() {
       "Competition",
       "Difficulty",
       "Intent",
+      "Location",
       "Fetched At",
     ];
     const csvRows = savedKeywords.map((kw) =>
@@ -74,6 +75,7 @@ function SavedKeywordsPage() {
         kw.competition?.toFixed(2) ?? "",
         kw.keywordDifficulty ?? "",
         kw.intent ?? "",
+        kw.locationCode ?? "",
         kw.fetchedAt ?? "",
       ].join(","),
     );
@@ -93,14 +95,14 @@ function SavedKeywordsPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-semibold">Saved Keywords</h1>
+            <h1 className="text-2xl font-semibold">Keywords Guardadas</h1>
             <p className="text-sm text-base-content/70">
-              Keywords you&apos;ve saved from keyword research.
+              Keywords que has guardado de tus investigaciones.
             </p>
           </div>
           {savedKeywords.length > 0 && (
             <button className="btn btn-sm" onClick={exportCsv}>
-              <Download className="size-4" /> Export CSV
+              <Download className="size-4" /> Exportar CSV
             </button>
           )}
         </div>
@@ -131,8 +133,8 @@ function SavedKeywordsPage() {
             <div className="card-body text-center py-12 text-base-content/50">
               <Search className="size-8 mx-auto mb-2 opacity-40" />
               <p>
-                No saved keywords yet. Use the Keyword Research page to find and
-                save keywords.
+                Aún no tienes keywords guardadas. Usa la sección de
+                Investigación de Keywords para encontrar y guardar keywords.
               </p>
             </div>
           </div>
@@ -146,20 +148,20 @@ function SavedKeywordsPage() {
                 </div>
               ) : null}
               <p className="text-sm text-base-content/70">
-                {savedKeywords.length} saved keyword
-                {savedKeywords.length !== 1 ? "s" : ""}
+                {savedKeywords.length} keyword
+                {savedKeywords.length !== 1 ? "s guardadas" : " guardada"}
               </p>
               <div className="overflow-x-auto">
                 <table className="table table-zebra table-sm">
                   <thead>
                     <tr>
                       <th>Keyword</th>
-                      <th>Volume</th>
+                      <th>Volumen</th>
                       <th>CPC</th>
-                      <th>Competition</th>
-                      <th>Difficulty</th>
-                      <th>Intent</th>
-                      <th>Last Fetched</th>
+                      <th>Competencia</th>
+                      <th>Dificultad</th>
+                      <th>Intención</th>
+                      <th>Última consulta</th>
                       <th></th>
                     </tr>
                   </thead>
@@ -194,7 +196,7 @@ function SavedKeywordsPage() {
                             className="btn btn-ghost btn-xs text-error"
                             onClick={() => handleRemoveKeyword(kw.id)}
                             disabled={removingId === kw.id}
-                            title="Remove"
+                            title="Eliminar"
                           >
                             {removingId === kw.id ? (
                               <Loader2 className="size-3 animate-spin" />

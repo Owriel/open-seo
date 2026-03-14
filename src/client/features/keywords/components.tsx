@@ -25,7 +25,14 @@ import type {
   MonthlySearch,
   SerpResultItem,
 } from "@/types/keywords";
-import { formatNumber, scoreTierClass } from "./utils";
+import {
+  formatNumber,
+  scoreTierClass,
+  calculatePriorityScore,
+  getPriorityTier,
+  priorityTierClass,
+  type KeywordCluster,
+} from "./utils";
 
 export type SortField =
   | "keyword"
@@ -213,6 +220,14 @@ export function KeywordRow({
       <div className="w-10 flex justify-end">
         <ScoreBadge value={row.keywordDifficulty} size="sm" />
       </div>
+
+      <div className="w-14 flex justify-end">
+        <PriorityBadge
+          searchVolume={row.searchVolume}
+          keywordDifficulty={row.keywordDifficulty}
+          cpc={row.cpc}
+        />
+      </div>
     </div>
   );
 }
@@ -256,7 +271,7 @@ export function KeywordCard({
 
       <div className="grid grid-cols-3 gap-2 text-xs">
         <div className="text-center">
-          <p className="text-base-content/50">Volume</p>
+          <p className="text-base-content/50">Volumen</p>
           <p className="font-medium tabular-nums">
             {formatNumber(row.searchVolume)}
           </p>
@@ -277,6 +292,11 @@ export function KeywordCard({
 
       <div className="flex items-center justify-between pt-1">
         <IntentBadge intent={row.intent} />
+        <PriorityBadge
+          searchVolume={row.searchVolume}
+          keywordDifficulty={row.keywordDifficulty}
+          cpc={row.cpc}
+        />
       </div>
     </div>
   );
@@ -331,18 +351,18 @@ export function SerpAnalysisCard({
           <p>{error}</p>
           {onRetry ? (
             <button className="btn btn-xs" onClick={onRetry}>
-              Retry
+              Reintentar
             </button>
           ) : null}
         </div>
       ) : items.length === 0 ? (
         <div className="text-center py-6 text-base-content/40 text-sm">
-          No SERP data available for this keyword
+          No hay datos SERP disponibles para esta keyword
         </div>
       ) : (
         <>
           <div className="text-xs text-base-content/50 mb-3">
-            {items.length} organic results
+            {items.length} resultados orgánicos
           </div>
 
           <div className="overflow-x-auto">
@@ -350,11 +370,11 @@ export function SerpAnalysisCard({
               <thead>
                 <tr className="text-xs text-base-content/60">
                   <th className="w-8">#</th>
-                  <th>Page</th>
-                  <th className="text-right w-20">Traffic</th>
-                  <th className="text-right w-20">Ref. Domains</th>
+                  <th>Página</th>
+                  <th className="text-right w-20">Tráfico</th>
+                  <th className="text-right w-20">Dom. Ref.</th>
                   <th className="text-right w-20">Backlinks</th>
-                  <th className="text-center w-16">Change</th>
+                  <th className="text-center w-16">Cambio</th>
                 </tr>
               </thead>
               <tbody>
@@ -407,7 +427,7 @@ export function SerpAnalysisCard({
           {totalPages > 1 && (
             <div className="flex items-center justify-between mt-3 pt-3 border-t border-base-200">
               <span className="text-xs text-base-content/50">
-                Page {page + 1} of {totalPages}
+                Página {page + 1} de {totalPages}
               </span>
               <div className="flex gap-1">
                 <button
@@ -416,14 +436,14 @@ export function SerpAnalysisCard({
                   onClick={() => onPageChange(page - 1)}
                 >
                   <ChevronLeft className="size-3.5" />
-                  Prev
+                  Ant.
                 </button>
                 <button
                   className="btn btn-ghost btn-xs"
                   disabled={page >= totalPages - 1}
                   onClick={() => onPageChange(page + 1)}
                 >
-                  Next
+                  Sig.
                   <ChevronRight className="size-3.5" />
                 </button>
               </div>
@@ -514,18 +534,18 @@ export function AreaTrendChart({ trend }: { trend: MonthlySearch[] }) {
   }, []);
 
   const monthLabels = [
-    "Jan",
+    "Ene",
     "Feb",
     "Mar",
-    "Apr",
+    "Abr",
     "May",
     "Jun",
     "Jul",
-    "Aug",
+    "Ago",
     "Sep",
     "Oct",
     "Nov",
-    "Dec",
+    "Dic",
   ];
   const data = last12.map((m) => ({
     month: monthLabels[m.month - 1],
@@ -538,7 +558,7 @@ export function AreaTrendChart({ trend }: { trend: MonthlySearch[] }) {
     <div
       ref={containerRef}
       className="w-full h-[210px] min-w-0"
-      aria-label="Search trend chart"
+      aria-label="Gráfico de tendencias"
     >
       {chartWidth > 0 ? (
         <AreaChart
@@ -595,7 +615,7 @@ export function AreaTrendChart({ trend }: { trend: MonthlySearch[] }) {
           <Area
             type="monotone"
             dataKey="searchVolume"
-            name="Search volume"
+            name="Volumen de búsqueda"
             stroke="var(--color-primary)"
             strokeWidth={2}
             fill="url(#trendGrad)"
@@ -653,7 +673,7 @@ function IntentBadge({ intent }: { intent: KeywordIntent }) {
   };
   const shortLabels: Record<KeywordIntent, string> = {
     informational: "Info",
-    commercial: "Comm",
+    commercial: "Com",
     transactional: "Trans",
     navigational: "Nav",
     unknown: "?",
@@ -662,5 +682,157 @@ function IntentBadge({ intent }: { intent: KeywordIntent }) {
     <span className={`badge badge-sm ${colors[intent]}`}>
       {shortLabels[intent]}
     </span>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Priority Badge                                                      */
+/* ------------------------------------------------------------------ */
+
+export function PriorityBadge({
+  searchVolume,
+  keywordDifficulty,
+  cpc,
+  showScore = false,
+}: {
+  searchVolume: number | null;
+  keywordDifficulty: number | null;
+  cpc: number | null;
+  showScore?: boolean;
+}) {
+  const score = calculatePriorityScore(searchVolume, keywordDifficulty, cpc);
+  const tier = getPriorityTier(score);
+  const tierClass = priorityTierClass(tier);
+  const label = tier.charAt(0).toUpperCase() + tier.slice(1);
+
+  return (
+    <span className={`badge badge-sm ${tierClass}`}>
+      {showScore ? `${score} - ${label}` : label}
+    </span>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Cluster View                                                        */
+/* ------------------------------------------------------------------ */
+
+export function ClusterCard({
+  cluster,
+  isExpanded,
+  onToggle,
+  onSelectCluster,
+}: {
+  cluster: KeywordCluster;
+  isExpanded: boolean;
+  onToggle: () => void;
+  onSelectCluster?: (keywords: string[]) => void;
+}) {
+  const tier = getPriorityTier(cluster.avgPriority);
+  const tierClass = priorityTierClass(tier);
+
+  return (
+    <div className="border border-base-300 rounded-lg overflow-hidden">
+      <button
+        className="w-full flex items-center gap-3 px-4 py-3 bg-base-100 hover:bg-base-200/50 transition-colors text-left"
+        onClick={onToggle}
+      >
+        {isExpanded ? (
+          <ChevronDown className="size-4 shrink-0 text-base-content/50" />
+        ) : (
+          <ChevronRight className="size-4 shrink-0 text-base-content/50" />
+        )}
+
+        <span className="flex-1 font-semibold text-sm capitalize">
+          {cluster.name}
+        </span>
+
+        <span className="text-xs text-base-content/50">
+          {cluster.count} keywords
+        </span>
+
+        <span className="text-xs tabular-nums font-medium">
+          {formatNumber(cluster.totalVolume)} vol.
+        </span>
+
+        <span className={`badge badge-sm ${tierClass}`}>
+          P: {cluster.avgPriority}
+        </span>
+
+        <span className="text-xs tabular-nums text-base-content/60">
+          KD: {cluster.avgDifficulty}
+        </span>
+
+        <span className="text-xs tabular-nums text-base-content/60">
+          CPC: ${cluster.avgCpc.toFixed(2)}
+        </span>
+      </button>
+
+      {isExpanded && (
+        <div className="border-t border-base-200 bg-base-200/20 px-4 py-2">
+          {onSelectCluster && (
+            <div className="flex justify-end mb-2">
+              <button
+                className="btn btn-xs btn-ghost text-primary"
+                onClick={() => onSelectCluster(cluster.keywords)}
+              >
+                Seleccionar todas
+              </button>
+            </div>
+          )}
+          <div className="flex flex-wrap gap-1.5">
+            {cluster.keywords.map((kw) => (
+              <span
+                key={kw}
+                className="badge badge-sm badge-outline capitalize"
+              >
+                {kw}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function ClusterSummary({
+  clusters,
+  expandedClusters,
+  onToggleCluster,
+  onSelectCluster,
+}: {
+  clusters: KeywordCluster[];
+  expandedClusters: Set<string>;
+  onToggleCluster: (name: string) => void;
+  onSelectCluster?: (keywords: string[]) => void;
+}) {
+  if (clusters.length === 0) return null;
+
+  const totalKeywords = clusters.reduce((s, c) => s + c.count, 0);
+  const totalVolume = clusters.reduce((s, c) => s + c.totalVolume, 0);
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <h3 className="font-semibold text-sm">
+          Clusters de Keywords
+        </h3>
+        <span className="text-xs text-base-content/50">
+          {clusters.length} clusters · {totalKeywords} keywords · {formatNumber(totalVolume)} vol. total
+        </span>
+      </div>
+
+      <div className="space-y-2">
+        {clusters.map((cluster) => (
+          <ClusterCard
+            key={cluster.name}
+            cluster={cluster}
+            isExpanded={expandedClusters.has(cluster.name)}
+            onToggle={() => onToggleCluster(cluster.name)}
+            onSelectCluster={onSelectCluster}
+          />
+        ))}
+      </div>
+    </div>
   );
 }

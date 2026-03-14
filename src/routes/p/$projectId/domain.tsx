@@ -31,7 +31,11 @@ import {
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
 import { useDomainSearchHistory } from "@/client/hooks/useDomainSearchHistory";
 import { HeaderHelpLabel } from "@/client/features/keywords/components";
-import { scoreTierClass } from "@/client/features/keywords/utils";
+import {
+  scoreTierClass,
+  getLanguageCode,
+  LOCATIONS,
+} from "@/client/features/keywords/utils";
 
 export const Route = createFileRoute("/p/$projectId/domain")({
   validateSearch: domainSearchSchema,
@@ -60,6 +64,7 @@ type DomainControlsValues = {
   domain: string;
   subdomains: boolean;
   sort: "rank" | "traffic" | "volume";
+  locationCode: number;
 };
 
 type DomainSortMode = DomainControlsValues["sort"];
@@ -91,6 +96,7 @@ function DomainOverviewPage() {
       domain: domainInput,
       subdomains: includeSubdomains,
       sort: sortMode,
+      locationCode: 2724,
     } as DomainControlsValues,
   });
 
@@ -325,7 +331,7 @@ function DomainOverviewPage() {
 
   const handleSaveKeywords = () => {
     if (selectedKeywords.size === 0) {
-      toast.error("Select at least one keyword first");
+      toast.error("Selecciona al menos una keyword primero");
       return;
     }
 
@@ -333,12 +339,13 @@ function DomainOverviewPage() {
       selectedKeywords.has(row.keyword),
     );
 
+    const activeLocationCode = controlsForm.state.values.locationCode;
     saveMutation.mutate(
       {
         projectId,
         keywords: [...selectedKeywords],
-        locationCode: 2840,
-        languageCode: "en",
+        locationCode: activeLocationCode,
+        languageCode: getLanguageCode(activeLocationCode),
         metrics: selectedRows.map((row) => ({
           keyword: row.keyword,
           searchVolume: row.searchVolume,
@@ -348,10 +355,10 @@ function DomainOverviewPage() {
       },
       {
         onSuccess: () => {
-          toast.success(`Saved ${selectedKeywords.size} keywords`);
+          toast.success(`${selectedKeywords.size} keywords guardadas`);
         },
         onError: (error) => {
-          toast.error(getStandardErrorMessage(error, "Save failed."));
+          toast.error(getStandardErrorMessage(error, "Error al guardar."));
         },
       },
     );
@@ -375,14 +382,14 @@ function DomainOverviewPage() {
     const activeTabValue = params?.tab ?? activeTab;
     const activeSearch = params?.search ?? pendingSearch;
     if (!rawTarget.trim()) {
-      setDomainError("Please enter a domain");
+      setDomainError("Introduce un dominio");
       return;
     }
 
     const target = normalizeDomainTarget(rawTarget);
     if (!target) {
       setDomainError(
-        "Please enter a valid URL or domain (e.g. browserbase.com)",
+        "Introduce un dominio válido (ej: ejemplo.com)",
       );
       return;
     }
@@ -409,12 +416,13 @@ function DomainOverviewPage() {
       replace: true,
     });
 
+    const searchLocationCode = controlsForm.state.values.locationCode;
     domainMutation.mutate(
       {
         domain: target,
         includeSubdomains: activeSubdomains,
-        locationCode: 2840,
-        languageCode: "en",
+        locationCode: searchLocationCode,
+        languageCode: getLanguageCode(searchLocationCode),
       },
       {
         onSuccess: (response) => {
@@ -430,11 +438,11 @@ function DomainOverviewPage() {
           });
 
           if (!response.hasData) {
-            toast.info("Not enough data for this domain");
+            toast.info("Datos insuficientes para este dominio");
           }
         },
         onError: (error) => {
-          setOverviewError(getStandardErrorMessage(error, "Lookup failed."));
+          setOverviewError(getStandardErrorMessage(error, "Error en la consulta."));
         },
       },
     );
@@ -449,9 +457,9 @@ function DomainOverviewPage() {
     <div className="px-4 py-4 md:px-6 md:py-6 pb-24 md:pb-8 overflow-auto">
       <div className="mx-auto max-w-7xl space-y-4">
         <div>
-          <h1 className="text-2xl font-semibold">Domain Overview</h1>
+          <h1 className="text-2xl font-semibold">Análisis de Dominio</h1>
           <p className="text-sm text-base-content/70">
-            Analyze any domain&apos;s SEO profile: traffic, keywords, and
+            Analiza el perfil SEO de cualquier dominio: tráfico, keywords y
             backlinks.
           </p>
         </div>
@@ -463,13 +471,13 @@ function DomainOverviewPage() {
               onSubmit={handleSearchSubmit}
             >
               <label
-                className={`input input-bordered lg:col-span-8 flex items-center gap-2 ${domainError ? "input-error" : ""}`}
+                className={`input input-bordered lg:col-span-6 flex items-center gap-2 ${domainError ? "input-error" : ""}`}
               >
                 <Search className="size-4 text-base-content/60" />
                 <controlsForm.Field name="domain">
                   {(field) => (
                     <input
-                      placeholder="Enter a domain (e.g. coolify.io or example.com/blog)"
+                      placeholder="Introduce un dominio (ej: ejemplo.com o ejemplo.com/blog)"
                       value={field.state.value}
                       onChange={(e) => {
                         field.handleChange(e.target.value);
@@ -484,6 +492,23 @@ function DomainOverviewPage() {
                 </controlsForm.Field>
               </label>
 
+              <controlsForm.Field name="locationCode">
+                {(field) => (
+                  <select
+                    className="select select-bordered lg:col-span-2"
+                    value={field.state.value}
+                    onChange={(e) => field.handleChange(Number(e.target.value))}
+                  >
+                    <option value={2724}>Spain</option>
+                    <option value={2826}>United Kingdom</option>
+                    <option value={2276}>Germany</option>
+                    <option value={2250}>France</option>
+                    <option value={2380}>Italy</option>
+                    <option value={2036}>Australia</option>
+                  </select>
+                )}
+              </controlsForm.Field>
+
               <controlsForm.Field name="sort">
                 {(field) => (
                   <select
@@ -496,9 +521,9 @@ function DomainOverviewPage() {
                       applySort(next, getDefaultSortOrder(next));
                     }}
                   >
-                    <option value="rank">By Rank</option>
-                    <option value="traffic">By Traffic</option>
-                    <option value="volume">By Volume</option>
+                    <option value="rank">Por Ranking</option>
+                    <option value="traffic">Por Tráfico</option>
+                    <option value="volume">Por Volumen</option>
                   </select>
                 )}
               </controlsForm.Field>
@@ -508,7 +533,7 @@ function DomainOverviewPage() {
                 className="btn btn-primary lg:col-span-2"
                 disabled={isLoading}
               >
-                {isLoading ? "Loading..." : "Search"}
+                {isLoading ? "Cargando..." : "Buscar"}
               </button>
             </form>
 
@@ -537,7 +562,7 @@ function DomainOverviewPage() {
                     />
                   )}
                 </controlsForm.Field>
-                <span className="label-text">Include subdomains</span>
+                <span className="label-text">Incluir subdominios</span>
               </label>
             </div>
           </div>
@@ -553,15 +578,15 @@ function DomainOverviewPage() {
                   <div className="flex items-center gap-2">
                     <History className="size-4 text-base-content/45" />
                     <span className="text-sm text-base-content/60">
-                      {history.length} recent search
-                      {history.length !== 1 ? "es" : ""}
+                      {history.length} búsqueda
+                      {history.length !== 1 ? "s recientes" : " reciente"}
                     </span>
                   </div>
                   <button
                     className="btn btn-ghost btn-xs text-error"
                     onClick={clearHistory}
                   >
-                    Clear all
+                    Borrar todo
                   </button>
                 </div>
 
@@ -607,8 +632,8 @@ function DomainOverviewPage() {
                           </p>
                           <p className="text-sm text-base-content/60 truncate">
                             {item.subdomains
-                              ? "Include subdomains"
-                              : "Root domain only"}
+                              ? "Incluir subdominios"
+                              : "Solo dominio raíz"}
                             {item.search?.trim() ? ` - ${item.search}` : ""}
                           </p>
                         </div>
@@ -638,7 +663,7 @@ function DomainOverviewPage() {
               <section className="rounded-2xl border border-dashed border-base-300 bg-base-100/70 p-6 text-center text-base-content/55 space-y-2">
                 <Globe className="size-9 mx-auto opacity-35" />
                 <p className="text-base font-medium text-base-content/80">
-                  Enter a domain to get started
+                  Introduce un dominio para empezar
                 </p>
               </section>
             )}
@@ -647,11 +672,11 @@ function DomainOverviewPage() {
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <StatCard
-                label="Estimated Organic Traffic"
+                label="Tráfico Orgánico Estimado"
                 value={formatMetric(overview.organicTraffic, overview.hasData)}
               />
               <StatCard
-                label="Organic Keywords"
+                label="Keywords Orgánicas"
                 value={formatMetric(overview.organicKeywords, overview.hasData)}
               />
             </div>
@@ -659,8 +684,8 @@ function DomainOverviewPage() {
             {!overview.hasData && (
               <div className="alert alert-info">
                 <span>
-                  Not enough data for this domain yet. Try another domain or
-                  include subdomains.
+                  No hay suficientes datos para este dominio. Prueba otro
+                  dominio o incluye subdominios.
                 </span>
               </div>
             )}
@@ -674,7 +699,7 @@ function DomainOverviewPage() {
                       className={`tab ${activeTab === "keywords" ? "tab-active" : ""}`}
                       onClick={() => setSearchParams({ tab: "keywords" })}
                     >
-                      Top Keywords
+                      Keywords Principales
                     </button>
                     <button
                       role="tab"
@@ -686,7 +711,7 @@ function DomainOverviewPage() {
                         setSearchParams({ tab: "pages" });
                       }}
                     >
-                      Top Pages
+                      Páginas Principales
                     </button>
                   </div>
 
@@ -697,7 +722,7 @@ function DomainOverviewPage() {
                         onClick={handleSaveKeywords}
                         disabled={selectedKeywords.size === 0}
                       >
-                        <Save className="size-4" /> Save Keywords
+                        <Save className="size-4" /> Guardar Keywords
                       </button>
                     )}
                     <div className="dropdown dropdown-end">
@@ -707,7 +732,7 @@ function DomainOverviewPage() {
                         className="btn btn-sm gap-1"
                       >
                         <Download className="size-4" />
-                        Export
+                        Exportar
                         <ChevronDown className="size-3 opacity-60" />
                       </div>
                       <ul
@@ -725,11 +750,11 @@ function DomainOverviewPage() {
                                 2,
                               );
                               await navigator.clipboard.writeText(text);
-                              toast.success("Copied data");
+                              toast.success("Datos copiados");
                             }}
                           >
                             <Copy className="size-4" />
-                            Copy data
+                            Copiar datos
                           </button>
                         </li>
                         <li>
@@ -746,7 +771,7 @@ function DomainOverviewPage() {
                             }}
                           >
                             <Download className="size-4" />
-                            Download CSV
+                            Descargar CSV
                           </button>
                         </li>
                         <li>
@@ -763,7 +788,7 @@ function DomainOverviewPage() {
                             }}
                           >
                             <FileSpreadsheet className="size-4" />
-                            Download Excel
+                            Descargar Excel
                           </button>
                         </li>
                       </ul>
@@ -775,7 +800,7 @@ function DomainOverviewPage() {
                   <label className="input input-bordered input-sm w-full max-w-xs flex items-center gap-2">
                     <Search className="size-4 text-base-content/60" />
                     <input
-                      placeholder="Search in results"
+                      placeholder="Buscar en resultados"
                       value={pendingSearch}
                       onChange={(e) => setPendingSearch(e.target.value)}
                     />
@@ -786,8 +811,8 @@ function DomainOverviewPage() {
                   <div className="overflow-x-auto">
                     <div className="mb-2 text-xs text-base-content/60">
                       {selectedKeywords.size > 0
-                        ? `${selectedKeywords.size} selected`
-                        : "Select keywords to save"}
+                        ? `${selectedKeywords.size} seleccionadas`
+                        : "Selecciona keywords para guardar"}
                     </div>
                     <table className="table table-zebra table-sm">
                       <thead>
@@ -816,7 +841,7 @@ function DomainOverviewPage() {
                           </th>
                           <th>
                             <SortableHeader
-                              label="Volume"
+                              label="Volumen"
                               isActive={sortMode === "volume"}
                               order={currentSortOrder}
                               onClick={() => handleSortColumnClick("volume")}
@@ -824,7 +849,7 @@ function DomainOverviewPage() {
                           </th>
                           <th>
                             <SortableHeader
-                              label="Traffic"
+                              label="Tráfico"
                               isActive={sortMode === "traffic"}
                               order={currentSortOrder}
                               onClick={() => handleSortColumnClick("traffic")}
@@ -833,14 +858,14 @@ function DomainOverviewPage() {
                           <th>
                             <HeaderHelpLabel
                               label="CPC"
-                              helpText="Cost per click in USD."
+                              helpText="Coste por clic en USD."
                             />
                           </th>
                           <th>URL</th>
                           <th>
                             <HeaderHelpLabel
                               label="Score"
-                              helpText="Keyword difficulty score."
+                              helpText="Puntuación de dificultad."
                             />
                           </th>
                         </tr>
@@ -852,7 +877,7 @@ function DomainOverviewPage() {
                               colSpan={8}
                               className="py-6 text-center text-base-content/60"
                             >
-                              No keywords match this search.
+                              No se encontraron keywords con esta búsqueda.
                             </td>
                           </tr>
                         ) : (
@@ -900,10 +925,10 @@ function DomainOverviewPage() {
                     <table className="table table-zebra table-sm">
                       <thead>
                         <tr>
-                          <th>Page</th>
+                          <th>Página</th>
                           <th>
                             <SortableHeader
-                              label="Organic Traffic"
+                              label="Tráfico Orgánico"
                               isActive={toPageSortMode(sortMode) === "traffic"}
                               order={currentSortOrder}
                               onClick={() => handleSortColumnClick("traffic")}
@@ -926,7 +951,7 @@ function DomainOverviewPage() {
                               colSpan={3}
                               className="py-6 text-center text-base-content/60"
                             >
-                              No pages match this search.
+                              No se encontraron páginas con esta búsqueda.
                             </td>
                           </tr>
                         ) : (
@@ -1065,7 +1090,7 @@ function SortableHeader({
       type="button"
       className="inline-flex items-center gap-1 font-medium hover:text-base-content"
       onClick={onClick}
-      aria-label={`Sort by ${label}`}
+      aria-label={`Ordenar por ${label}`}
       aria-pressed={isActive}
     >
       <span>{label}</span>
@@ -1144,7 +1169,7 @@ function formatMetric(
   value: number | null | undefined,
   hasData: boolean | undefined,
 ) {
-  if (!hasData) return "Not enough data";
+  if (!hasData) return "Datos insuficientes";
   return formatNumber(value);
 }
 

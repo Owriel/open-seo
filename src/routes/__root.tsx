@@ -19,7 +19,6 @@ import { NotFound } from "@/client/components/NotFound";
 import appCss from "@/client/styles/app.css?url";
 import { Toaster } from "sonner";
 import { Sidebar } from "@/client/components/Sidebar";
-import { EmbeddedAppProvider } from "@every-app/sdk/tanstack";
 import { queryClient } from "@/client/tanstack-db";
 import { projectNavItems } from "@/client/navigation/items";
 
@@ -96,7 +95,7 @@ function AppLayout() {
             <Menu className="h-6 w-6" />
           </button>
           <span className="font-semibold text-base-content ml-1">
-            Every App
+            OpenSEO
           </span>
         </div>
 
@@ -107,7 +106,7 @@ function AppLayout() {
             target="_top"
             className="text-lg font-semibold text-base-content hover:text-primary transition-colors px-2"
           >
-            Every App
+            OpenSEO
           </a>
           {projectId &&
             projectNavItems.map((item) => {
@@ -139,10 +138,10 @@ function AppLayout() {
         <div className="flex-none hidden md:flex">
           <div
             className="tooltip tooltip-left before:whitespace-nowrap"
-            data-tip="Multiple projects coming soon"
+            data-tip="Próximamente: múltiples proyectos"
           >
             <button className="btn btn-ghost btn-sm font-medium text-sm gap-1 cursor-default">
-              <span className="truncate">Default</span>
+              <span className="truncate">Predeterminado</span>
               <ChevronsUpDown className="size-3.5 shrink-0 text-base-content/40" />
             </button>
           </div>
@@ -159,7 +158,7 @@ function AppLayout() {
           <div className="fixed inset-0 z-50">
             <button
               type="button"
-              aria-label="Close sidebar"
+              aria-label="Cerrar menú"
               className="absolute inset-0 bg-black/45"
               onClick={() => setDrawerOpen(false)}
             />
@@ -195,28 +194,26 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       <body>
         <ClientOnly>
           <QueryClientProvider client={queryClient}>
-            <EmbeddedAppProvider appId={import.meta.env.VITE_APP_ID}>
-              <>
-                {children}
-                <Toaster
-                  position="bottom-right"
-                  mobileOffset={{ bottom: 100 }}
+            <>
+              {children}
+              <Toaster
+                position="bottom-right"
+                mobileOffset={{ bottom: 100 }}
+              />
+              {showDevtools ? (
+                <TanStackDevtools
+                  config={{ position: "bottom-right" }}
+                  eventBusConfig={{ connectToServerBus: true }}
+                  plugins={[
+                    {
+                      name: "TanStack Router",
+                      render: <TanStackRouterDevtoolsPanel />,
+                      defaultOpen: true,
+                    },
+                  ]}
                 />
-                {showDevtools ? (
-                  <TanStackDevtools
-                    config={{ position: "bottom-right" }}
-                    eventBusConfig={{ connectToServerBus: true }}
-                    plugins={[
-                      {
-                        name: "TanStack Router",
-                        render: <TanStackRouterDevtoolsPanel />,
-                        defaultOpen: true,
-                      },
-                    ]}
-                  />
-                ) : null}
-              </>
-            </EmbeddedAppProvider>
+              ) : null}
+            </>
           </QueryClientProvider>
         </ClientOnly>
         <Scripts />

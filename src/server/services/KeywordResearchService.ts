@@ -25,6 +25,7 @@ import {
   getCached,
   setCached,
   CACHE_TTL,
+  CACHE_TTL_SECONDS,
 } from "@/server/lib/kv-cache";
 import { KeywordResearchRepository } from "@/server/repositories/KeywordResearchRepository";
 import { AppError } from "@/server/lib/errors";
@@ -229,6 +230,7 @@ async function research(
   source: KeywordSource;
   usedFallback: boolean;
 }> {
+  console.log("[KW-RESEARCH] Starting research with input:", JSON.stringify(input));
   const uniqueKeywords = [
     ...new Set(input.keywords.map(normalizeKeyword)),
   ].filter((kw) => kw.length > 0);
@@ -260,6 +262,7 @@ async function research(
   );
 
   if (cached && cacheHasMetrics) {
+    console.log("[KW-RESEARCH] Serving from cache, rows:", cached.rows.length);
     return {
       rows: cached.rows,
       source: cached.source ?? "related",
@@ -267,6 +270,7 @@ async function research(
     };
   }
 
+  console.log("[KW-RESEARCH] Cache miss, calling DataForSEO...");
   // Fetch keyword data from primary endpoint with fallback chain
   const { rows, source, usedFallback } = await fetchKeywordRowsWithFallback(
     uniqueKeywords[0],
@@ -275,11 +279,17 @@ async function research(
     input.resultLimit,
   );
 
+  console.log("[KW-RESEARCH] DataForSEO returned", rows.length, "rows, source:", source, "fallback:", usedFallback);
+
   // Cache the result
   await setCached(
     cacheKey,
     { rows, source, usedFallback },
     CACHE_TTL.researchResult,
+    {
+      label: `Keywords: ${uniqueKeywords[0]}`,
+      params: { keyword: uniqueKeywords[0], locationCode: input.locationCode },
+    },
   );
 
   // Persist metrics to DB (fire-and-forget, don't block the response)
@@ -490,7 +500,7 @@ async function getProject(userId: string, projectId: string) {
 // SERP Analysis
 // ---------------------------------------------------------------------------
 
-const SERP_CACHE_TTL_SECONDS = 12 * 60 * 60; // 12 hours
+const SERP_CACHE_TTL_SECONDS = CACHE_TTL_SECONDS; // 30 days
 
 async function getSerpAnalysis(input: {
   keyword: string;
@@ -544,7 +554,10 @@ async function getSerpAnalysis(input: {
   const result = { items };
 
   if (items.length > 0) {
-    void setCached(cacheKey, result, SERP_CACHE_TTL_SECONDS).catch((err) => {
+    void setCached(cacheKey, result, SERP_CACHE_TTL_SECONDS, {
+      label: `SERP: ${keyword}`,
+      params: { keyword, locationCode: input.locationCode },
+    }).catch((err) => {
       console.error("Failed to cache SERP analysis in KV:", err);
     });
   }

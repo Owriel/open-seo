@@ -19,18 +19,18 @@ function AiPage() {
             <div className="flex items-center gap-2 text-primary">
               <Sparkles className="size-5" />
               <span className="text-sm font-semibold uppercase tracking-wide">
-                Coming Soon
+                Próximamente
               </span>
             </div>
             <h1 className="text-2xl font-semibold">
-              AI-powered features are coming soon
+              Las funciones de IA llegarán pronto
             </h1>
             <p className="text-sm text-base-content/70 max-w-3xl">
-              We want this to be community driven. If there&apos;s a workflow
-              you want solved first, let me know!
+              Queremos que sea impulsado por la comunidad. Si hay un flujo de
+              trabajo que quieres que resolvamos primero, ¡dínoslo!
             </p>
             <div className="text-sm text-base-content/80">
-              Message us on{" "}
+              Escríbenos en{" "}
               <a
                 className="link link-primary"
                 href={DISCORD_URL}
@@ -39,7 +39,7 @@ function AiPage() {
               >
                 Discord
               </a>{" "}
-              or email me at{" "}
+              o envíanos un email a{" "}
               <a className="link link-primary" href={`mailto:${SUPPORT_EMAIL}`}>
                 {SUPPORT_EMAIL}
               </a>
@@ -54,12 +54,12 @@ function AiPage() {
               <div className="flex items-center gap-2">
                 <Sparkles className="size-4 text-primary" />
                 <h2 className="card-title text-base">
-                  Planned: Content Assistant
+                  Planificado: Asistente de Contenido
                 </h2>
               </div>
               <p className="text-sm text-base-content/70">
-                Generate blog post drafts using your saved keywords, business
-                context, and general strategy.
+                Genera borradores de artículos usando tus keywords guardadas,
+                contexto de negocio y estrategia general.
               </p>
             </div>
           </div>
@@ -69,12 +69,12 @@ function AiPage() {
               <div className="flex items-center gap-2">
                 <Bot className="size-4 text-primary" />
                 <h2 className="card-title text-base">
-                  Planned: SEO Research Agent
+                  Planificado: Agente de Investigación SEO
                 </h2>
               </div>
               <p className="text-sm text-base-content/70">
-                Ask SEO questions, run focused research, and get help using the
-                app without leaving your workflow.
+                Haz preguntas sobre SEO, ejecuta investigaciones enfocadas y
+                obtén ayuda usando la app sin salir de tu flujo de trabajo.
               </p>
             </div>
           </div>
@@ -84,14 +84,14 @@ function AiPage() {
               <div className="flex items-center gap-2">
                 <Lightbulb className="size-4 text-primary" />
                 <h2 className="card-title text-base">
-                  Content Assistant workflow today
+                  Flujo del Asistente de Contenido hoy
                 </h2>
               </div>
               <p className="text-sm text-base-content/70">
-                If you want content generation right now, make a local folder
-                and use Claude Code, Claude/Cowork, Cursor, Codex, or a similar
-                coding agent. Paste in your keywords, business plan, and
-                strategy, then iterate with the agent until the draft is right.
+                Si quieres generar contenido ahora, crea una carpeta local y usa
+                Claude Code, Claude/Cowork, Cursor, Codex u otro agente de
+                código similar. Pega tus keywords, plan de negocio y estrategia,
+                y itera con el agente hasta tener el borrador perfecto.
               </p>
             </div>
           </div>
@@ -101,12 +101,13 @@ function AiPage() {
               <div className="flex items-center gap-2">
                 <Compass className="size-4 text-primary" />
                 <h2 className="card-title text-base">
-                  DataForSEO MCP for agentic workflows
+                  DataForSEO MCP para flujos agénticos
                 </h2>
               </div>
               <p className="text-sm text-base-content/70">
-                If you want the best agentic path for DataForSEO API data, use
-                the official DataForSEO MCP server setup guide.
+                Si quieres la mejor ruta agéntica para datos de la API de
+                DataForSEO, usa la guía de configuración oficial del servidor
+                MCP de DataForSEO.
               </p>
               <div>
                 <a
@@ -115,7 +116,7 @@ function AiPage() {
                   target="_blank"
                   rel="noreferrer"
                 >
-                  Open DataForSEO MCP docs
+                  Abrir documentación MCP de DataForSEO
                   <ArrowUpRight className="size-3.5" />
                 </a>
               </div>

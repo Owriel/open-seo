@@ -47,11 +47,11 @@ export type GetCrawlProgressInput = z.infer<typeof getCrawlProgressSchema>;
 
 // ─── URL search params schema for /p/$projectId/audit ────────────────────────
 
-const auditTabs = ["pages", "performance"] as const;
+const auditTabs = ["issues", "pages", "performance"] as const;
 
 export const auditSearchSchema = z.object({
   auditId: z.string().optional().catch(undefined),
-  tab: z.enum(auditTabs).catch("pages").default("pages"),
+  tab: z.enum(auditTabs).catch("issues").default("issues"),
 });
 
 export type AuditSearchParams = z.infer<typeof auditSearchSchema>;

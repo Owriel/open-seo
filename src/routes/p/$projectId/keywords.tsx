@@ -28,6 +28,7 @@ import {
   Clock,
   RotateCcw,
   AlertCircle,
+  Layers,
 } from "lucide-react";
 import type { KeywordResearchRow } from "@/types/keywords";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
@@ -39,14 +40,20 @@ import {
 } from "@/client/features/keywords/utils";
 import {
   AreaTrendChart,
+  ClusterSummary,
   KeywordCard,
   KeywordRow,
   OverviewStats,
+  PriorityBadge,
   SerpAnalysisCard,
   SortHeader,
   type SortDir,
   type SortField,
 } from "@/client/features/keywords/components";
+import {
+  clusterKeywords,
+  calculatePriorityScore,
+} from "@/client/features/keywords/utils";
 
 export const Route = createFileRoute("/p/$projectId/keywords")({
   validateSearch: keywordsSearchSchema,
@@ -180,7 +187,7 @@ function KeywordResearchPage() {
   // --- URL search params (persisted in query string) ---
   const {
     q: keywordInput = "",
-    loc: locationCode = 2840,
+    loc: locationCode = 2724,
     kLimit: resultLimit = 150,
     sort: sortField = "searchVolume",
     order: sortDir = "desc",
@@ -310,6 +317,10 @@ function KeywordResearchPage() {
   // Mobile tab state
   const [mobileTab, setMobileTab] = useState<"keywords" | "serp">("keywords");
 
+  // Cluster view state
+  const [showClusters, setShowClusters] = useState(false);
+  const [expandedClusters, setExpandedClusters] = useState<Set<string>>(new Set());
+
   // --- React Query hooks ---
 
   // Keyword research (user-triggered)
@@ -339,7 +350,7 @@ function KeywordResearchPage() {
   const serpResults = serpQuery.data?.items ?? [];
   const serpLoading = serpQuery.isLoading;
   const serpError = serpQuery.isError
-    ? getStandardErrorMessage(serpQuery.error, "Failed to load SERP data.")
+    ? getStandardErrorMessage(serpQuery.error, "Error al cargar datos SERP.")
     : null;
 
   // Save keywords mutation
@@ -385,6 +396,29 @@ function KeywordResearchPage() {
     sortField,
     sortDir,
   ]);
+
+  // Compute clusters from filtered rows
+  const clusters = useMemo(() => {
+    if (!showClusters || filteredRows.length === 0) return [];
+    return clusterKeywords(filteredRows, searchedKeyword);
+  }, [filteredRows, showClusters, searchedKeyword]);
+
+  const toggleClusterExpanded = useCallback((name: string) => {
+    setExpandedClusters((prev) => {
+      const next = new Set(prev);
+      if (next.has(name)) next.delete(name);
+      else next.add(name);
+      return next;
+    });
+  }, []);
+
+  const selectClusterKeywords = useCallback((keywords: string[]) => {
+    setSelectedRows((prev) => {
+      const next = new Set(prev);
+      for (const kw of keywords) next.add(kw);
+      return next;
+    });
+  }, []);
 
   const activeFilterCount = useMemo(
     () =>
@@ -469,7 +503,7 @@ function KeywordResearchPage() {
       .filter(Boolean);
 
     if (keywords.length === 0) {
-      setSearchInputError("Please enter at least one keyword.");
+      setSearchInputError("Introduce al menos una keyword.");
       return;
     }
 
@@ -531,7 +565,7 @@ function KeywordResearchPage() {
         onError: (error) => {
           setLastSearchError(true);
           setRows([]);
-          setResearchError(getStandardErrorMessage(error, "Research failed."));
+          setResearchError(getStandardErrorMessage(error, "Error en la investigación."));
         },
       },
     );
@@ -588,7 +622,7 @@ function KeywordResearchPage() {
 
   const handleSaveKeywords = () => {
     if (selectedRows.size === 0) {
-      toast.error("Select at least one keyword first");
+      toast.error("Selecciona al menos una keyword primero");
       return;
     }
     setShowSaveDialog(true);
@@ -604,11 +638,11 @@ function KeywordResearchPage() {
       },
       {
         onSuccess: () => {
-          toast.success(`Saved ${selectedRows.size} keywords`);
+          toast.success(`${selectedRows.size} keywords guardadas`);
           setShowSaveDialog(false);
         },
         onError: (error) => {
-          toast.error(getStandardErrorMessage(error, "Save failed."));
+          toast.error(getStandardErrorMessage(error, "Error al guardar."));
         },
       },
     );
@@ -620,9 +654,11 @@ function KeywordResearchPage() {
         ? filteredRows.filter((r) => selectedRows.has(r.keyword))
         : filteredRows;
     if (source.length === 0) {
-      toast.error("No data to export");
+      toast.error("No hay datos para exportar");
       return;
     }
+    const locationName = LOCATIONS[locationCode] || "Unknown";
+    const exportDate = new Date().toISOString().slice(0, 10);
     const headers = [
       "Keyword",
       "Volume",
@@ -630,6 +666,9 @@ function KeywordResearchPage() {
       "Competition",
       "Difficulty",
       "Intent",
+      "Priority",
+      "Location",
+      "Date",
     ];
     const csvRows = source.map((r) =>
       [
@@ -639,6 +678,9 @@ function KeywordResearchPage() {
         r.competition?.toFixed(2) ?? "",
         r.keywordDifficulty ?? "",
         r.intent,
+        calculatePriorityScore(r.searchVolume, r.keywordDifficulty, r.cpc),
+        csvEscape(locationName),
+        exportDate,
       ].join(","),
     );
     const csv = [headers.join(","), ...csvRows].join("\n");
@@ -677,7 +719,7 @@ function KeywordResearchPage() {
               {(field) => (
                 <input
                   className="grow min-w-0"
-                  placeholder="Enter Keyword"
+                  placeholder="Introduce una keyword"
                   value={field.state.value}
                   onChange={(e) => {
                     field.handleChange(e.target.value);
@@ -696,14 +738,12 @@ function KeywordResearchPage() {
                 value={field.state.value}
                 onChange={(e) => field.handleChange(Number(e.target.value))}
               >
-                <option value={2840}>United States</option>
+                <option value={2724}>Spain</option>
                 <option value={2826}>United Kingdom</option>
                 <option value={2276}>Germany</option>
                 <option value={2250}>France</option>
+                <option value={2380}>Italy</option>
                 <option value={2036}>Australia</option>
-                <option value={2124}>Canada</option>
-                <option value={2356}>India</option>
-                <option value={2076}>Brazil</option>
               </select>
             )}
           </controlsForm.Field>
@@ -719,7 +759,7 @@ function KeywordResearchPage() {
               >
                 {RESULT_LIMITS.map((limit) => (
                   <option key={limit} value={limit}>
-                    {limit} results
+                    {limit} resultados
                   </option>
                 ))}
               </select>
@@ -732,7 +772,7 @@ function KeywordResearchPage() {
             className="btn btn-primary btn-sm px-6 font-semibold"
             disabled={isLoading}
           >
-            {isLoading ? "Searching..." : "Search"}
+            {isLoading ? "Buscando..." : "Buscar"}
           </button>
         </form>
         {searchInputError ? (
@@ -751,7 +791,7 @@ function KeywordResearchPage() {
               <p className="text-sm">{researchError}</p>
             </div>
             <button className="btn btn-sm" onClick={() => onSearch()}>
-              Try again
+              Reintentar
             </button>
           </div>
         </div>
@@ -763,16 +803,16 @@ function KeywordResearchPage() {
               <Globe className="size-10 mx-auto text-base-content/40" />
               <div className="space-y-2">
                 <p className="text-lg font-semibold text-base-content">
-                  Not enough keyword data for this query yet
+                  No hay suficientes datos para esta consulta
                 </p>
                 <p className="text-sm text-base-content/70">
-                  We could not find keyword opportunities for
+                  No se encontraron oportunidades de keywords para
                   <span className="font-medium text-base-content">
                     {` "${lastSearchKeyword}" `}
                   </span>
-                  in
+                  en
                   <span className="font-medium text-base-content">
-                    {` ${LOCATIONS[lastSearchLocationCode] || "this location"}`}
+                    {` ${LOCATIONS[lastSearchLocationCode] || "esta ubicación"}`}
                   </span>
                   .
                 </p>
@@ -780,17 +820,17 @@ function KeywordResearchPage() {
 
               <div className="rounded-xl bg-base-200/70 px-4 py-3 text-left text-sm text-base-content/70 space-y-1">
                 <p>
-                  Source checked:{" "}
+                  Fuente consultada:{" "}
                   <span className="font-medium">{lastResultSource}</span>
                   {lastUsedFallback ? (
                     <span>
                       {" "}
-                      (with fallback chain: related → suggestions → ideas)
+                      (cadena de búsqueda: relacionadas → sugerencias → ideas)
                     </span>
                   ) : null}
                 </p>
                 <p>
-                  Try a broader phrase, swap word order, or change location.
+                  Prueba una frase más amplia, cambia el orden o la ubicación.
                 </p>
               </div>
 
@@ -815,7 +855,7 @@ function KeywordResearchPage() {
                   }}
                   disabled={lastSearchKeyword.trim().split(/\s+/).length < 2}
                 >
-                  Try reversed phrase
+                  Prueba la frase invertida
                 </button>
                 <button
                   className="btn btn-sm btn-ghost"
@@ -831,7 +871,7 @@ function KeywordResearchPage() {
                     });
                   }}
                 >
-                  Try broader seed
+                  Prueba una keyword más amplia
                 </button>
               </div>
             </div>
@@ -845,15 +885,15 @@ function KeywordResearchPage() {
                     <div className="flex items-center gap-2">
                       <History className="size-4 text-base-content/45" />
                       <span className="text-sm text-base-content/60">
-                        {history.length} recent search
-                        {history.length !== 1 ? "es" : ""}
+                        {history.length} búsqueda
+                        {history.length !== 1 ? "s recientes" : " reciente"}
                       </span>
                     </div>
                     <button
                       className="btn btn-ghost btn-xs text-error"
                       onClick={clearHistory}
                     >
-                      Clear all
+                      Borrar todo
                     </button>
                   </div>
                   <div className="grid gap-2">
@@ -913,11 +953,11 @@ function KeywordResearchPage() {
                 <section className="rounded-2xl border border-dashed border-base-300 bg-base-100/70 p-6 text-center text-base-content/50 space-y-3">
                   <Search className="size-10 mx-auto opacity-40" />
                   <p className="text-lg font-medium text-base-content/80">
-                    Enter a keyword to get started
+                    Introduce una keyword para empezar
                   </p>
                   <p className="text-sm max-w-md mx-auto">
-                    Search for any keyword to see volume, difficulty, CPC, and
-                    related keyword ideas.
+                    Busca cualquier keyword para ver volumen, dificultad, CPC e
+                    ideas de keywords relacionadas.
                   </p>
                 </section>
               )}
@@ -936,13 +976,13 @@ function KeywordResearchPage() {
                   className="rounded-lg border border-warning/40 bg-warning/15 px-3 py-2 text-sm text-base-content"
                   role="status"
                 >
-                  No exact match for{" "}
+                  No hay coincidencia exacta para{" "}
                   <span className="font-medium">"{searchedKeyword}"</span>.
-                  Showing closest related keywords instead.
+                  Mostrando keywords relacionadas más cercanas.
                   {lastUsedFallback ? (
                     <span className="text-base-content/75">
                       {" "}
-                      Source: {lastResultSource} fallback.
+                      Fuente: {lastResultSource} (fallback).
                     </span>
                   ) : null}
                 </div>
@@ -961,16 +1001,24 @@ function KeywordResearchPage() {
                     title="Toggle table filters"
                   >
                     <SlidersHorizontal className="size-3.5" />
-                    Filters
+                    Filtros
                     {activeFilterCount > 0 && (
                       <span className="badge badge-xs badge-primary border-0 text-primary-content">
                         {activeFilterCount}
                       </span>
                     )}
                   </button>
+                  <button
+                    className={`btn btn-ghost btn-sm gap-1.5 ${showClusters ? "btn-active" : ""}`}
+                    onClick={() => setShowClusters((p) => !p)}
+                    title="Ver clusters de keywords"
+                  >
+                    <Layers className="size-3.5" />
+                    Clusters
+                  </button>
                   <span className="text-sm text-base-content/60">
                     {selectedRows.size > 0
-                      ? `${selectedRows.size} of ${filteredRows.length} selected`
+                      ? `${selectedRows.size} de ${filteredRows.length} seleccionadas`
                       : `${filteredRows.length} keywords`}
                   </span>
                   <div className="flex-1" />
@@ -980,7 +1028,7 @@ function KeywordResearchPage() {
                     disabled={selectedRows.size === 0}
                   >
                     <Save className="size-3.5" />
-                    <span className="hidden lg:inline">Save Keywords</span>
+                    <span className="hidden lg:inline">Guardar Keywords</span>
                   </button>
                   <button
                     className="btn btn-ghost btn-sm gap-1"
@@ -988,7 +1036,7 @@ function KeywordResearchPage() {
                     disabled={filteredRows.length === 0}
                   >
                     <FileDown className="size-3.5" />
-                    <span className="hidden lg:inline">Export</span>
+                    <span className="hidden lg:inline">Exportar</span>
                   </button>
                 </div>
 
@@ -997,7 +1045,7 @@ function KeywordResearchPage() {
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div className="flex items-center gap-2">
                         <p className="text-sm font-semibold">
-                          Refine table results
+                          Filtrar resultados
                         </p>
                         {activeFilterCount > 0 && (
                           <span className="badge badge-xs badge-primary border-0 text-primary-content">
@@ -1011,14 +1059,14 @@ function KeywordResearchPage() {
                         disabled={activeFilterCount === 0}
                       >
                         <RotateCcw className="size-3" />
-                        Clear all
+                        Borrar todo
                       </button>
                     </div>
 
                     <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
                       <label className="form-control gap-1.5">
                         <span className="text-[11px] font-semibold uppercase tracking-wide text-base-content/60">
-                          Include Terms
+                          Incluir
                         </span>
                         <input
                           className="input input-bordered input-sm bg-base-100"
@@ -1029,7 +1077,7 @@ function KeywordResearchPage() {
                       </label>
                       <label className="form-control gap-1.5">
                         <span className="text-[11px] font-semibold uppercase tracking-wide text-base-content/60">
-                          Exclude Terms
+                          Excluir
                         </span>
                         <input
                           className="input input-bordered input-sm bg-base-100"
@@ -1043,19 +1091,19 @@ function KeywordResearchPage() {
                     <div className="grid grid-cols-1 gap-2 lg:grid-cols-3">
                       <div className="rounded-lg border border-base-300 bg-base-100 p-2.5 space-y-2">
                         <p className="text-[11px] font-semibold uppercase tracking-wide text-base-content/60">
-                          Search Volume
+                          Volumen de Búsqueda
                         </p>
                         <div className="grid grid-cols-2 gap-2">
                           <input
                             className="input input-bordered input-xs"
-                            placeholder="Min"
+                            placeholder="Mín."
                             type="number"
                             value={pendingMinVol}
                             onChange={(e) => setPendingMinVol(e.target.value)}
                           />
                           <input
                             className="input input-bordered input-xs"
-                            placeholder="Max"
+                            placeholder="Máx."
                             type="number"
                             value={pendingMaxVol}
                             onChange={(e) => setPendingMaxVol(e.target.value)}
@@ -1069,7 +1117,7 @@ function KeywordResearchPage() {
                         <div className="grid grid-cols-2 gap-2">
                           <input
                             className="input input-bordered input-xs"
-                            placeholder="Min"
+                            placeholder="Mín."
                             type="number"
                             step="0.01"
                             value={pendingMinCpc}
@@ -1077,7 +1125,7 @@ function KeywordResearchPage() {
                           />
                           <input
                             className="input input-bordered input-xs"
-                            placeholder="Max"
+                            placeholder="Máx."
                             type="number"
                             step="0.01"
                             value={pendingMaxCpc}
@@ -1087,19 +1135,19 @@ function KeywordResearchPage() {
                       </div>
                       <div className="rounded-lg border border-base-300 bg-base-100 p-2.5 space-y-2">
                         <p className="text-[11px] font-semibold uppercase tracking-wide text-base-content/60">
-                          Difficulty
+                          Dificultad
                         </p>
                         <div className="grid grid-cols-2 gap-2">
                           <input
                             className="input input-bordered input-xs"
-                            placeholder="Min"
+                            placeholder="Mín."
                             type="number"
                             value={pendingMinKd}
                             onChange={(e) => setPendingMinKd(e.target.value)}
                           />
                           <input
                             className="input input-bordered input-xs"
-                            placeholder="Max"
+                            placeholder="Máx."
                             type="number"
                             value={pendingMaxKd}
                             onChange={(e) => setPendingMaxKd(e.target.value)}
@@ -1130,7 +1178,7 @@ function KeywordResearchPage() {
                     className="flex-1 min-w-0"
                   />
                   <SortHeader
-                    label="Volume"
+                    label="Volumen"
                     field="searchVolume"
                     current={sortField}
                     dir={sortDir}
@@ -1139,7 +1187,7 @@ function KeywordResearchPage() {
                   />
                   <SortHeader
                     label="CPC"
-                    helpText="Cost per click in USD."
+                    helpText="Coste por clic en USD."
                     field="cpc"
                     current={sortField}
                     dir={sortDir}
@@ -1148,7 +1196,7 @@ function KeywordResearchPage() {
                   />
                   <SortHeader
                     label="Comp."
-                    helpText="Advertiser competition."
+                    helpText="Competencia de anunciantes."
                     field="competition"
                     current={sortField}
                     dir={sortDir}
@@ -1157,28 +1205,43 @@ function KeywordResearchPage() {
                   />
                   <SortHeader
                     label="Score"
-                    helpText="Keyword difficulty score."
+                    helpText="Puntuación de dificultad."
                     field="keywordDifficulty"
                     current={sortField}
                     dir={sortDir}
                     onToggle={toggleSort}
                     className="w-10 text-right"
                   />
+                  <span className="w-14 text-right text-xs text-base-content/60 font-medium">
+                    Prioridad
+                  </span>
                 </div>
+
+                {/* Cluster view */}
+                {showClusters && clusters.length > 0 && (
+                  <div className="shrink-0 max-h-[40%] overflow-y-auto border-b border-base-300 p-4">
+                    <ClusterSummary
+                      clusters={clusters}
+                      expandedClusters={expandedClusters}
+                      onToggleCluster={toggleClusterExpanded}
+                      onSelectCluster={selectClusterKeywords}
+                    />
+                  </div>
+                )}
 
                 {/* Scrollable keyword rows */}
                 <div className="flex-1 overflow-y-auto">
                   {filteredRows.length === 0 ? (
                     <div className="h-full flex flex-col items-center justify-center text-center px-4 text-base-content/50 gap-3">
                       <p className="text-sm font-medium">
-                        No keywords match your current filters.
+                        No hay keywords con los filtros actuales.
                       </p>
                       {activeFilterCount > 0 ? (
                         <button
                           className="btn btn-ghost btn-sm"
                           onClick={resetFilters}
                         >
-                          Clear filters
+                          Borrar filtros
                         </button>
                       ) : null}
                     </div>
@@ -1204,9 +1267,9 @@ function KeywordResearchPage() {
               {overviewKeyword && overviewKeyword.trend.length > 0 && (
                 <div className="shrink-0 border border-base-300 rounded-xl bg-base-100 px-4 py-3">
                   <h4 className="text-sm font-semibold mb-1">
-                    Search Trends{" "}
+                    Tendencias de Búsqueda{" "}
                     <span className="font-normal text-base-content/50">
-                      Past 12 months
+                      Últimos 12 meses
                     </span>
                   </h4>
                   <AreaTrendChart trend={overviewKeyword.trend} />
@@ -1218,7 +1281,7 @@ function KeywordResearchPage() {
                 <div className="shrink-0 px-4 py-3 border-b border-base-300">
                   <h3 className="text-sm font-semibold flex items-center gap-1.5">
                     <Globe className="size-3.5" />
-                    SERP Analysis
+                    Análisis SERP
                     {serpKeyword && (
                       <span className="font-normal text-base-content/50 truncate">
                         : {serpKeyword}
@@ -1276,9 +1339,9 @@ function KeywordResearchPage() {
                     className="mx-4 mt-2 rounded-lg border border-warning/40 bg-warning/15 px-3 py-2 text-xs text-base-content"
                     role="status"
                   >
-                    No exact match for{" "}
+                    No hay coincidencia exacta para{" "}
                     <span className="font-medium">"{searchedKeyword}"</span>.
-                    Showing closest related keywords.
+                    Mostrando keywords relacionadas.
                   </div>
                 )}
 
@@ -1289,7 +1352,7 @@ function KeywordResearchPage() {
                     onClick={() => setShowFilters((p) => !p)}
                   >
                     <SlidersHorizontal className="size-3.5" />
-                    Filters
+                    Filtros
                     {activeFilterCount > 0 && (
                       <span className="badge badge-xs badge-primary border-0 text-primary-content">
                         {activeFilterCount}
@@ -1298,7 +1361,7 @@ function KeywordResearchPage() {
                   </button>
                   <span className="text-xs text-base-content/60">
                     {selectedRows.size > 0
-                      ? `${selectedRows.size} selected`
+                      ? `${selectedRows.size} seleccionadas`
                       : `${filteredRows.length} keywords`}
                   </span>
                   <div className="flex-1" />
@@ -1323,7 +1386,7 @@ function KeywordResearchPage() {
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2">
                         <p className="text-xs font-semibold">
-                          Refine table results
+                          Filtrar resultados
                         </p>
                         {activeFilterCount > 0 && (
                           <span className="badge badge-xs badge-primary border-0 text-primary-content">
@@ -1337,20 +1400,20 @@ function KeywordResearchPage() {
                         disabled={activeFilterCount === 0}
                       >
                         <RotateCcw className="size-3" />
-                        Clear
+                        Borrar
                       </button>
                     </div>
 
                     <div className="grid grid-cols-1 gap-2">
                       <input
                         className="input input-bordered input-sm bg-base-100"
-                        placeholder="Include terms (audit, checker)"
+                        placeholder="Incluir (audit, checker)"
                         value={pendingInclude}
                         onChange={(e) => setPendingInclude(e.target.value)}
                       />
                       <input
                         className="input input-bordered input-sm bg-base-100"
-                        placeholder="Exclude terms (jobs, course)"
+                        placeholder="Excluir (jobs, course)"
                         value={pendingExclude}
                         onChange={(e) => setPendingExclude(e.target.value)}
                       />
@@ -1359,21 +1422,21 @@ function KeywordResearchPage() {
                     <div className="grid grid-cols-2 gap-2">
                       <input
                         className="input input-bordered input-sm bg-base-100"
-                        placeholder="Min volume"
+                        placeholder="Vol. mín."
                         type="number"
                         value={pendingMinVol}
                         onChange={(e) => setPendingMinVol(e.target.value)}
                       />
                       <input
                         className="input input-bordered input-sm bg-base-100"
-                        placeholder="Max volume"
+                        placeholder="Vol. máx."
                         type="number"
                         value={pendingMaxVol}
                         onChange={(e) => setPendingMaxVol(e.target.value)}
                       />
                       <input
                         className="input input-bordered input-sm bg-base-100"
-                        placeholder="Min CPC"
+                        placeholder="CPC mín."
                         type="number"
                         step="0.01"
                         value={pendingMinCpc}
@@ -1381,7 +1444,7 @@ function KeywordResearchPage() {
                       />
                       <input
                         className="input input-bordered input-sm bg-base-100"
-                        placeholder="Max CPC"
+                        placeholder="CPC máx."
                         type="number"
                         step="0.01"
                         value={pendingMaxCpc}
@@ -1389,14 +1452,14 @@ function KeywordResearchPage() {
                       />
                       <input
                         className="input input-bordered input-sm bg-base-100"
-                        placeholder="Min difficulty"
+                        placeholder="Dif. mín."
                         type="number"
                         value={pendingMinKd}
                         onChange={(e) => setPendingMinKd(e.target.value)}
                       />
                       <input
                         className="input input-bordered input-sm bg-base-100"
-                        placeholder="Max difficulty"
+                        placeholder="Dif. máx."
                         type="number"
                         value={pendingMaxKd}
                         onChange={(e) => setPendingMaxKd(e.target.value)}
@@ -1410,14 +1473,14 @@ function KeywordResearchPage() {
                   {filteredRows.length === 0 ? (
                     <div className="h-full min-h-48 flex flex-col items-center justify-center text-center px-4 text-base-content/50 gap-3">
                       <p className="text-sm font-medium">
-                        No keywords match your current filters.
+                        No hay keywords con los filtros actuales.
                       </p>
                       {activeFilterCount > 0 ? (
                         <button
                           className="btn btn-ghost btn-sm"
                           onClick={resetFilters}
                         >
-                          Clear filters
+                          Borrar filtros
                         </button>
                       ) : null}
                     </div>
@@ -1459,19 +1522,19 @@ function KeywordResearchPage() {
         <div className="modal modal-open">
           <div className="modal-box">
             <h3 className="font-bold text-lg">
-              Save {selectedRows.size} Keywords
+              Guardar {selectedRows.size} Keywords
             </h3>
             <div className="py-4">
               <p className="text-base-content/70 text-sm">
-                These keywords will be saved to your current project.
+                Estas keywords se guardarán en tu proyecto actual.
               </p>
             </div>
             <div className="modal-action">
               <button className="btn" onClick={() => setShowSaveDialog(false)}>
-                Cancel
+                Cancelar
               </button>
               <button className="btn btn-primary" onClick={confirmSave}>
-                Save
+                Guardar
               </button>
             </div>
           </div>
