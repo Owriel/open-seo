@@ -9,23 +9,17 @@ importers:
   .:
     dependencies:
       '@every-app/sdk':
-        specifier: ^0.1.13
-        version: 0.1.13(@tanstack/react-router@1.162.4(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@tanstack/react-start@1.162.4(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(vite@7.3.1(@types/node@22.19.11)(jiti@2.6.1)(lightningcss@1.31.1)(tsx@4.21.0)))(jose@6.1.3)(react@19.2.4)
+        specifier: ^0.1.14
+        version: 0.1.14(@tanstack/react-router@1.162.4(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@tanstack/react-start@1.162.4(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(vite@7.3.1(@types/node@22.19.11)(jiti@2.6.1)(lightningcss@1.31.1)(tsx@4.21.0)))(jose@6.1.3)(react@19.2.4)
       '@tanstack/query-core':
         specifier: ^5.90.9
         version: 5.90.20
-      '@tanstack/query-sync-storage-persister':
-        specifier: ^5.90.14
-        version: 5.90.22
       '@tanstack/react-form':
         specifier: ^1.25.0
         version: 1.28.3(@tanstack/react-start@1.162.4(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(vite@7.3.1(@types/node@22.19.11)(jiti@2.6.1)(lightningcss@1.31.1)(tsx@4.21.0)))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@tanstack/react-query':
         specifier: ^5.90.9
         version: 5.90.21(react@19.2.4)
-      '@tanstack/react-query-persist-client':
-        specifier: ^5.90.14
-        version: 5.90.22(@tanstack/react-query@5.90.21(react@19.2.4))(react@19.2.4)
       '@tanstack/react-router':
         specifier: ^1.136.3
         version: 1.162.4(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -59,6 +53,9 @@ importers:
       lucide-react:
         specifier: ^0.542.0
         version: 0.542.0(react@19.2.4)
+      papaparse:
+        specifier: ^5.5.3
+        version: 5.5.3
       react:
         specifier: ^19.0.0
         version: 19.2.4
@@ -80,6 +77,9 @@ importers:
       tailwindcss:
         specifier: ^4.1.16
         version: 4.2.1
+      tldts:
+        specifier: ^7.0.25
+        version: 7.0.25
       zod:
         specifier: ^4.1.12
         version: 4.3.6
@@ -105,6 +105,9 @@ importers:
       '@types/node':
         specifier: ^22.18.13
         version: 22.19.11
+      '@types/papaparse':
+        specifier: ^5.5.2
+        version: 5.5.2
       '@types/react':
         specifier: ^19.0.8
         version: 19.2.14
@@ -122,7 +125,10 @@ importers:
         version: 5.85.0(@types/node@22.19.11)(typescript@5.9.3)
       oxlint:
         specifier: ^1.50.0
-        version: 1.50.0
+        version: 1.50.0(oxlint-tsgolint@0.15.0)
+      oxlint-tsgolint:
+        specifier: ^0.15.0
+        version: 0.15.0
       portless:
         specifier: ^0.5.2
         version: 0.5.2
@@ -763,8 +769,8 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@every-app/sdk@0.1.13':
-    resolution: {integrity: sha512-r8NxAydshZVK2Z3H+SzYHuTGvIPHS+y/M38AgolRW6C87eQHa+VRWlZAtuUIq5P/fIaDpZcYgz43qRfTusvDSg==}
+  '@every-app/sdk@0.1.14':
+    resolution: {integrity: sha512-1UIX+lvHswwm+IIvQgWXgdI9g3NiM8rhms0rvPx4W36ZqzugsKmLONYX9/LpK3i9Nv3Fi43VhOc7n3Je0jy9fA==}
     peerDependencies:
       '@tanstack/react-router': ^1.0.0
       '@tanstack/react-start': ^1.0.0
@@ -1143,6 +1149,36 @@ packages:
 
   '@oxc-resolver/binding-win32-x64-msvc@11.18.0':
     resolution: {integrity: sha512-EhW8Su3AEACSw5HfzKMmyCtV0oArNrVViPdeOfvVYL9TrkL+/4c8fWHFTBtxUMUyCjhSG5xYNdwty1D/TAgL0Q==}
+    cpu: [x64]
+    os: [win32]
+
+  '@oxlint-tsgolint/darwin-arm64@0.15.0':
+    resolution: {integrity: sha512-d7Ch+A6hic+RYrm32+Gh1o4lOrQqnFsHi721ORdHUDBiQPea+dssKUEMwIbA6MKmCy6TVJ02sQyi24OEfCiGzw==}
+    cpu: [arm64]
+    os: [darwin]
+
+  '@oxlint-tsgolint/darwin-x64@0.15.0':
+    resolution: {integrity: sha512-Aoai2wAkaUJqp/uEs1gml6TbaPW4YmyO5Ai/vOSkiizgHqVctjhjKqmRiWTX2xuPY94VkwOLqp+Qr3y/0qSpWQ==}
+    cpu: [x64]
+    os: [darwin]
+
+  '@oxlint-tsgolint/linux-arm64@0.15.0':
+    resolution: {integrity: sha512-4og13a7ec4Vku5t2Y7s3zx6YJP6IKadb1uA9fOoRH6lm/wHWoCnxjcfJmKHXRZJII81WmbdJMSPxaBfwN/S68Q==}
+    cpu: [arm64]
+    os: [linux]
+
+  '@oxlint-tsgolint/linux-x64@0.15.0':
+    resolution: {integrity: sha512-9b9xzh/1Harn3a+XiKTK/8LrWw3VcqLfYp/vhV5/zAVR2Mt0d63WSp4FL+wG7DKnI2T/CbMFUFHwc7kCQjDMzQ==}
+    cpu: [x64]
+    os: [linux]
+
+  '@oxlint-tsgolint/win32-arm64@0.15.0':
+    resolution: {integrity: sha512-nNac5hewHdkk5mowOwTqB1ZD76zB/FsUiyUvdCyupq5cG54XyKqSLEp9QGbx7wFJkWCkeWmuwRed4sfpAlKaeA==}
+    cpu: [arm64]
+    os: [win32]
+
+  '@oxlint-tsgolint/win32-x64@0.15.0':
+    resolution: {integrity: sha512-ioAY2XLpy83E2EqOLH9p1cEgj0G2qB1lmAn0a3yFV1jHQB29LIPIKGNsu/tYCClpwmHN79pT5KZAHZOgWxxqNg==}
     cpu: [x64]
     os: [win32]
 
@@ -1613,12 +1649,6 @@ packages:
   '@tanstack/query-core@5.90.20':
     resolution: {integrity: sha512-OMD2HLpNouXEfZJWcKeVKUgQ5n+n3A2JFmBaScpNDUqSrQSjiveC7dKMe53uJUg1nDG16ttFPz2xfilz6i2uVg==}
 
-  '@tanstack/query-persist-client-core@5.91.19':
-    resolution: {integrity: sha512-whrASqbVq8261Ue+/ZzpHsrLDYVfRaENs4HTdLuYKxawkGWzdMfV7BmOdWl8ZF0mEBEbrQR8V6oE3R635JF2Fw==}
-
-  '@tanstack/query-sync-storage-persister@5.90.22':
-    resolution: {integrity: sha512-QoOHewbI9a/7hezbVXlZOOCkF4oTnOpAGNMYiObUZm+jpEoLF5YqGMg0iDv3laSEymz81Zw8HJ8UFxP7mwEmqw==}
-
   '@tanstack/react-devtools@0.9.6':
     resolution: {integrity: sha512-4wnhqQ1o5PnmEDV8L3yLWaE2ZWD2xjdUw1X8Uv5NK9Ekrz/Qr6iuYl+X4Kq9+Ix2luVGMqd3toFvEwkr3uMFBw==}
     engines: {node: '>=18'}
@@ -1636,12 +1666,6 @@ packages:
     peerDependenciesMeta:
       '@tanstack/react-start':
         optional: true
-
-  '@tanstack/react-query-persist-client@5.90.22':
-    resolution: {integrity: sha512-BrD3Y/SsrSIDl+t/gpYvjvGHXd7m7oF+GIqktKE8LmTgt7bS1lYHd/CLkVxMPixTU53gHHVFfPNGmY7Hv4L/7g==}
-    peerDependencies:
-      '@tanstack/react-query': ^5.90.20
-      react: ^18 || ^19
 
   '@tanstack/react-query@5.90.21':
     resolution: {integrity: sha512-0Lu6y5t+tvlTJMTO7oh5NSpJfpg/5D41LlThfepTixPYkJ0sE2Jj0m0f6yYqujBwIXlId87e234+MxG3D3g7kg==}
@@ -1829,6 +1853,9 @@ packages:
 
   '@types/node@22.19.11':
     resolution: {integrity: sha512-BH7YwL6rA93ReqeQS1c4bsPpcfOmJasG+Fkr6Y59q83f9M1WcBRHR2vM+P9eOisYRcN3ujQoiZY8uk5W+1WL8w==}
+
+  '@types/papaparse@5.5.2':
+    resolution: {integrity: sha512-gFnFp/JMzLHCwRf7tQHrNnfhN4eYBVYYI897CGX4MY1tzY9l2aLkVyx2IlKZ/SAqDbB3I1AOZW5gTMGGsqWliA==}
 
   '@types/react-dom@19.2.3':
     resolution: {integrity: sha512-jp2L/eY6fn+KgVVQAOqYItbF0VY/YApe5Mz2F0aykSO8gx31bYCZyvSeYxCHKvzHG5eZjc+zyaS5BrBWya2+kQ==}
@@ -2602,6 +2629,10 @@ packages:
   oxc-resolver@11.18.0:
     resolution: {integrity: sha512-Fv/b05AfhpYoCDvsog6tgsDm2yIwIeJafpMFLncNwKHRYu+Y1xQu5Q/rgUn7xBfuhNgjtPO7C0jCf7p2fLDj1g==}
 
+  oxlint-tsgolint@0.15.0:
+    resolution: {integrity: sha512-iwvFmhKQVZzVTFygUVI4t2S/VKEm+Mqkw3jQRJwfDuTcUYI5LCIYzdO5Dbuv4mFOkXZCcXaRRh0m+uydB5xdqw==}
+    hasBin: true
+
   oxlint@1.50.0:
     resolution: {integrity: sha512-iSJ4IZEICBma8cZX7kxIIz9PzsYLF2FaLAYN6RKu7VwRVKdu7RIgpP99bTZaGl//Yao7fsaGZLSEo5xBrI5ReQ==}
     engines: {node: ^20.19.0 || >=22.12.0}
@@ -2611,6 +2642,9 @@ packages:
     peerDependenciesMeta:
       oxlint-tsgolint:
         optional: true
+
+  papaparse@5.5.3:
+    resolution: {integrity: sha512-5QvjGxYVjxO59MGU2lHVYpRWBBtKHnlIAcSe1uNFCkkptUh63NFRj0FJQm7nR67puEruUci/ZkjmEFrjCAyP4A==}
 
   parse5-htmlparser2-tree-adapter@7.1.0:
     resolution: {integrity: sha512-ruw5xyKs6lrpo9x9rCZqZZnIUntICjQAd0Wsmp396Ul9lN/h+ifgVV1x1gZHi8euej6wTfpqX8j+BFQxF0NS/g==}
@@ -2760,8 +2794,18 @@ packages:
     peerDependencies:
       seroval: ^1.0
 
+  seroval-plugins@1.5.1:
+    resolution: {integrity: sha512-4FbuZ/TMl02sqv0RTFexu0SP6V+ywaIe5bAWCCEik0fk17BhALgwvUDVF7e3Uvf9pxmwCEJsRPmlkUE6HdzLAw==}
+    engines: {node: '>=10'}
+    peerDependencies:
+      seroval: ^1.0
+
   seroval@1.5.0:
     resolution: {integrity: sha512-OE4cvmJ1uSPrKorFIH9/w/Qwuvi/IMcGbv5RKgcJ/zjA/IohDLU6SVaxFN9FwajbP7nsX0dQqMDes1whk3y+yw==}
+    engines: {node: '>=10'}
+
+  seroval@1.5.1:
+    resolution: {integrity: sha512-OwrZRZAfhHww0WEnKHDY8OM0U/Qs8OTfIDWhUD4BLpNJUfXK4cGmjiagGze086m+mhI+V2nD0gfbHEnJjb9STA==}
     engines: {node: '>=10'}
 
   sharp@0.34.5:
@@ -2805,8 +2849,8 @@ packages:
     engines: {node: '>=20.16.0'}
     hasBin: true
 
-  srvx@0.11.8:
-    resolution: {integrity: sha512-2n9t0YnAXPJjinytvxccNgs7rOA5gmE7Wowt/8Dy2dx2fDC6sBhfBpbrCvjYKALlVukPS/Uq3QwkolKNa7P/2Q==}
+  srvx@0.11.9:
+    resolution: {integrity: sha512-97wWJS6F0KTKAhDlHVmBzMvlBOp5FiNp3XrLoodIgYJpXxgG5tE9rX4Pg7s46n2shI4wtEsMATTS1+rI3/ubzA==}
     engines: {node: '>=20.16.0'}
     hasBin: true
 
@@ -2837,6 +2881,13 @@ packages:
   tinyglobby@0.2.15:
     resolution: {integrity: sha512-j2Zq4NyQYG5XMST4cbs02Ak8iJUdxRM0XI5QyxXuZOzKOINmWurp3smXu3y5wDcJrptwpSjgXHzIQxR0omXljQ==}
     engines: {node: '>=12.0.0'}
+
+  tldts-core@7.0.25:
+    resolution: {integrity: sha512-ZjCZK0rppSBu7rjHYDYsEaMOIbbT+nWF57hKkv4IUmZWBNrBWBOjIElc0mKRgLM8bm7x/BBlof6t2gi/Oq/Asw==}
+
+  tldts@7.0.25:
+    resolution: {integrity: sha512-keinCnPbwXEUG3ilrWQZU+CqcTTzHq9m2HhoUP2l7Xmi8l1LuijAXLpAJ5zRW+ifKTNscs4NdCkfkDCBYm352w==}
+    hasBin: true
 
   to-regex-range@5.0.1:
     resolution: {integrity: sha512-65P7iz6X5yEr1cwcgvQxbbIw7Uk3gOy5dIdtZ4rDveLqhrdJP+Li/Hx6tyK0NEb+2GCyneCMJiGqrADCSNk8sQ==}
@@ -3472,7 +3523,7 @@ snapshots:
   '@esbuild/win32-x64@0.27.3':
     optional: true
 
-  '@every-app/sdk@0.1.13(@tanstack/react-router@1.162.4(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@tanstack/react-start@1.162.4(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(vite@7.3.1(@types/node@22.19.11)(jiti@2.6.1)(lightningcss@1.31.1)(tsx@4.21.0)))(jose@6.1.3)(react@19.2.4)':
+  '@every-app/sdk@0.1.14(@tanstack/react-router@1.162.4(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@tanstack/react-start@1.162.4(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(vite@7.3.1(@types/node@22.19.11)(jiti@2.6.1)(lightningcss@1.31.1)(tsx@4.21.0)))(jose@6.1.3)(react@19.2.4)':
     dependencies:
       '@tanstack/react-router': 1.162.4(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@tanstack/react-start': 1.162.4(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(vite@7.3.1(@types/node@22.19.11)(jiti@2.6.1)(lightningcss@1.31.1)(tsx@4.21.0))
@@ -3760,6 +3811,24 @@ snapshots:
     optional: true
 
   '@oxc-resolver/binding-win32-x64-msvc@11.18.0':
+    optional: true
+
+  '@oxlint-tsgolint/darwin-arm64@0.15.0':
+    optional: true
+
+  '@oxlint-tsgolint/darwin-x64@0.15.0':
+    optional: true
+
+  '@oxlint-tsgolint/linux-arm64@0.15.0':
+    optional: true
+
+  '@oxlint-tsgolint/linux-x64@0.15.0':
+    optional: true
+
+  '@oxlint-tsgolint/win32-arm64@0.15.0':
+    optional: true
+
+  '@oxlint-tsgolint/win32-x64@0.15.0':
     optional: true
 
   '@oxlint/binding-android-arm-eabi@1.50.0':
@@ -4099,15 +4168,6 @@ snapshots:
 
   '@tanstack/query-core@5.90.20': {}
 
-  '@tanstack/query-persist-client-core@5.91.19':
-    dependencies:
-      '@tanstack/query-core': 5.90.20
-
-  '@tanstack/query-sync-storage-persister@5.90.22':
-    dependencies:
-      '@tanstack/query-core': 5.90.20
-      '@tanstack/query-persist-client-core': 5.91.19
-
   '@tanstack/react-devtools@0.9.6(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(csstype@3.2.3)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(solid-js@1.9.11)':
     dependencies:
       '@tanstack/devtools': 0.10.7(csstype@3.2.3)(solid-js@1.9.11)
@@ -4130,12 +4190,6 @@ snapshots:
       '@tanstack/react-start': 1.162.4(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(vite@7.3.1(@types/node@22.19.11)(jiti@2.6.1)(lightningcss@1.31.1)(tsx@4.21.0))
     transitivePeerDependencies:
       - react-dom
-
-  '@tanstack/react-query-persist-client@5.90.22(@tanstack/react-query@5.90.21(react@19.2.4))(react@19.2.4)':
-    dependencies:
-      '@tanstack/query-persist-client-core': 5.91.19
-      '@tanstack/react-query': 5.90.21(react@19.2.4)
-      react: 19.2.4
 
   '@tanstack/react-query@5.90.21(react@19.2.4)':
     dependencies:
@@ -4416,6 +4470,10 @@ snapshots:
   '@types/node@22.19.11':
     dependencies:
       undici-types: 6.21.0
+
+  '@types/papaparse@5.5.2':
+    dependencies:
+      '@types/node': 22.19.11
 
   '@types/react-dom@19.2.3(@types/react@19.2.14)':
     dependencies:
@@ -4917,7 +4975,7 @@ snapshots:
   h3@2.0.1-rc.14:
     dependencies:
       rou3: 0.7.12
-      srvx: 0.11.8
+      srvx: 0.11.9
 
   has-symbols@1.1.0: {}
 
@@ -5158,7 +5216,16 @@ snapshots:
       '@oxc-resolver/binding-win32-ia32-msvc': 11.18.0
       '@oxc-resolver/binding-win32-x64-msvc': 11.18.0
 
-  oxlint@1.50.0:
+  oxlint-tsgolint@0.15.0:
+    optionalDependencies:
+      '@oxlint-tsgolint/darwin-arm64': 0.15.0
+      '@oxlint-tsgolint/darwin-x64': 0.15.0
+      '@oxlint-tsgolint/linux-arm64': 0.15.0
+      '@oxlint-tsgolint/linux-x64': 0.15.0
+      '@oxlint-tsgolint/win32-arm64': 0.15.0
+      '@oxlint-tsgolint/win32-x64': 0.15.0
+
+  oxlint@1.50.0(oxlint-tsgolint@0.15.0):
     optionalDependencies:
       '@oxlint/binding-android-arm-eabi': 1.50.0
       '@oxlint/binding-android-arm64': 1.50.0
@@ -5179,6 +5246,9 @@ snapshots:
       '@oxlint/binding-win32-arm64-msvc': 1.50.0
       '@oxlint/binding-win32-ia32-msvc': 1.50.0
       '@oxlint/binding-win32-x64-msvc': 1.50.0
+      oxlint-tsgolint: 0.15.0
+
+  papaparse@5.5.3: {}
 
   parse5-htmlparser2-tree-adapter@7.1.0:
     dependencies:
@@ -5336,7 +5406,13 @@ snapshots:
     dependencies:
       seroval: 1.5.0
 
+  seroval-plugins@1.5.1(seroval@1.5.1):
+    dependencies:
+      seroval: 1.5.1
+
   seroval@1.5.0: {}
+
+  seroval@1.5.1: {}
 
   sharp@0.34.5:
     dependencies:
@@ -5376,8 +5452,8 @@ snapshots:
   solid-js@1.9.11:
     dependencies:
       csstype: 3.2.3
-      seroval: 1.5.0
-      seroval-plugins: 1.5.0(seroval@1.5.0)
+      seroval: 1.5.1
+      seroval-plugins: 1.5.1(seroval@1.5.1)
 
   sonner@2.0.7(react-dom@19.2.4(react@19.2.4))(react@19.2.4):
     dependencies:
@@ -5397,7 +5473,7 @@ snapshots:
 
   srvx@0.11.7: {}
 
-  srvx@0.11.8: {}
+  srvx@0.11.9: {}
 
   strip-json-comments@5.0.3: {}
 
@@ -5417,6 +5493,12 @@ snapshots:
     dependencies:
       fdir: 6.5.0(picomatch@4.0.3)
       picomatch: 4.0.3
+
+  tldts-core@7.0.25: {}
+
+  tldts@7.0.25:
+    dependencies:
+      tldts-core: 7.0.25
 
   to-regex-range@5.0.1:
     dependencies:

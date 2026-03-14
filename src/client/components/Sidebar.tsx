@@ -21,18 +21,12 @@ export function Sidebar({
     return (
       <div className="sidebar w-64 border-r border-base-300 h-full bg-base-100 flex flex-col">
         <div className="px-4 py-4 border-b border-base-300 flex items-center justify-between">
-          <a
-            href={import.meta.env.VITE_GATEWAY_URL}
-            target="_top"
-            className="font-semibold text-base-content hover:text-primary transition-colors"
-          >
-            OpenSEO
-          </a>
+          <span className="font-semibold text-base-content">OpenSEO</span>
           {onClose && (
             <button
               onClick={onClose}
               className="btn btn-ghost btn-sm btn-circle"
-              aria-label="Cerrar menú"
+              aria-label="Close sidebar"
             >
               <X className="h-5 w-5" />
             </button>
@@ -49,18 +43,12 @@ export function Sidebar({
     <div className="sidebar w-64 border-r border-base-300 h-full bg-base-100 flex flex-col">
       {/* Header */}
       <div className="px-4 py-4 border-b border-base-300 flex items-center justify-between">
-        <a
-          href={import.meta.env.VITE_GATEWAY_URL}
-          target="_top"
-          className="font-semibold text-base-content hover:text-primary transition-colors"
-        >
-          OpenSEO
-        </a>
+        <span className="font-semibold text-base-content">OpenSEO</span>
         {onClose && (
           <button
             onClick={onClose}
             className="btn btn-ghost btn-sm btn-circle"
-            aria-label="Cerrar menú"
+            aria-label="Close sidebar"
           >
             <X className="h-5 w-5" />
           </button>
@@ -71,10 +59,10 @@ export function Sidebar({
       <div className="px-3 py-3 border-b border-base-300">
         <div
           className="tooltip tooltip-bottom w-full"
-          data-tip="Próximamente: múltiples proyectos"
+          data-tip="Multiple projects coming soon"
         >
           <button className="btn btn-ghost btn-sm w-full justify-between font-medium text-sm cursor-default">
-            <span className="truncate">Predeterminado</span>
+            <span className="truncate">Default</span>
             <ChevronsUpDown className="size-3.5 shrink-0 text-base-content/40" />
           </button>
         </div>

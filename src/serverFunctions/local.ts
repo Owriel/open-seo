@@ -30,10 +30,10 @@ export const searchLocalPack = createServerFn({ method: "POST" })
       languageCode: data.languageCode,
     });
 
-    const cached = await getCached<{ results: LocalPackResult[] }>(cacheKey);
-    if (cached && cached.results?.length > 0) {
-      console.log("[LOCAL-PACK] Serving from cache:", cached.results.length, "results");
-      return cached;
+    const cachedRaw = await getCached(cacheKey) as { results: LocalPackResult[] } | null;
+    if (cachedRaw && cachedRaw.results?.length > 0) {
+      console.log("[LOCAL-PACK] Serving from cache:", cachedRaw.results.length, "results");
+      return cachedRaw;
     }
 
     console.log("[LOCAL-PACK] Cache miss, calling DataForSEO...");
@@ -130,10 +130,10 @@ export const getLocalKeywordSuggestions = createServerFn({ method: "POST" })
       limit: data.limit,
     });
 
-    const cached = await getCached<{ keywords: LocalKeywordSuggestion[] }>(cacheKey);
-    if (cached && cached.keywords?.length > 0) {
-      console.log("[LOCAL-KW] Serving from cache:", cached.keywords.length, "keywords");
-      return cached;
+    const cachedRaw = await getCached(cacheKey) as { keywords: LocalKeywordSuggestion[] } | null;
+    if (cachedRaw && cachedRaw.keywords?.length > 0) {
+      console.log("[LOCAL-KW] Serving from cache:", cachedRaw.keywords.length, "keywords");
+      return cachedRaw;
     }
 
     console.log("[LOCAL-KW] Cache miss, calling DataForSEO...");
@@ -195,10 +195,10 @@ export const getCityKeywordSuggestions = createServerFn({ method: "POST" })
       languageCode: data.languageCode,
     });
 
-    const cached = await getCached<{ keywords: LocalKeywordSuggestion[]; cityFound: string | null }>(cacheKey);
-    if (cached && cached.keywords?.length > 0) {
-      console.log("[LOCAL-CITY-KW] Serving from cache:", cached.keywords.length, "keywords");
-      return cached;
+    const cachedRaw = await getCached(cacheKey) as { keywords: LocalKeywordSuggestion[]; cityFound: string | null } | null;
+    if (cachedRaw && cachedRaw.keywords?.length > 0) {
+      console.log("[LOCAL-CITY-KW] Serving from cache:", cachedRaw.keywords.length, "keywords");
+      return cachedRaw;
     }
 
     // 1. Look up city location_code in DataForSEO

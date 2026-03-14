@@ -77,28 +77,16 @@ export function csvEscape(value: string | number | null | undefined): string {
 
 export type PriorityTier = "alta" | "media" | "baja";
 
-/**
- * Calculates a 0-100 priority score for a keyword based on:
- * - Volume (35%): higher = better
- * - Difficulty (35%): lower = better
- * - CPC (30%): higher = better (commercial intent)
- */
 export function calculatePriorityScore(
   searchVolume: number | null,
   keywordDifficulty: number | null,
   cpc: number | null,
 ): number {
-  // Normalize volume: log scale, cap at 100k
   const vol = Math.min(searchVolume ?? 0, 100000);
   const volScore = vol > 0 ? (Math.log10(vol) / Math.log10(100000)) * 100 : 0;
-
-  // Normalize difficulty: invert (low difficulty = high score)
   const diffScore = 100 - (keywordDifficulty ?? 50);
-
-  // Normalize CPC: cap at $10
   const cpcVal = Math.min(cpc ?? 0, 10);
   const cpcScore = (cpcVal / 10) * 100;
-
   return Math.round(volScore * 0.35 + diffScore * 0.35 + cpcScore * 0.3);
 }
 
@@ -133,7 +121,6 @@ export type KeywordCluster = {
   count: number;
 };
 
-// Common Spanish stop words to ignore in clustering
 const STOP_WORDS = new Set([
   "de", "la", "el", "en", "y", "a", "los", "las", "del", "un", "una",
   "por", "con", "para", "que", "se", "al", "es", "lo", "como", "más",
@@ -141,17 +128,12 @@ const STOP_WORDS = new Set([
   "for", "is", "on", "at", "it", "a", "an", "vs", "with", "from",
 ]);
 
-/**
- * Clusters keywords by shared word patterns (bigrams).
- * Keywords that don't fit any cluster go into "Otros".
- */
 export function clusterKeywords<T extends { keyword: string; searchVolume: number | null; keywordDifficulty: number | null; cpc: number | null }>(
   rows: T[],
   seedKeyword?: string,
 ): KeywordCluster[] {
   if (rows.length === 0) return [];
 
-  // Tokenize all keywords
   const tokenized = rows.map((r) => ({
     keyword: r.keyword,
     tokens: r.keyword
@@ -163,10 +145,8 @@ export function clusterKeywords<T extends { keyword: string; searchVolume: numbe
     cpc: r.cpc ?? 0,
   }));
 
-  // Count bigram frequency
   const bigramCount = new Map<string, number>();
   for (const { tokens } of tokenized) {
-    // Use individual significant words and bigrams
     const seen = new Set<string>();
     for (let i = 0; i < tokens.length; i++) {
       if (i + 1 < tokens.length) {
@@ -179,12 +159,10 @@ export function clusterKeywords<T extends { keyword: string; searchVolume: numbe
     }
   }
 
-  // Filter bigrams: must appear in at least 2 keywords
   const validBigrams = [...bigramCount.entries()]
     .filter(([, count]) => count >= 2)
     .sort((a, b) => b[1] - a[1]);
 
-  // Assign keywords to clusters (each keyword goes to its best matching bigram)
   const assigned = new Set<string>();
   const clusters: KeywordCluster[] = [];
 
@@ -218,7 +196,6 @@ export function clusterKeywords<T extends { keyword: string; searchVolume: numbe
     });
   }
 
-  // Remaining keywords go to "Otros"
   const unassigned = tokenized.filter((t) => !assigned.has(t.keyword));
   if (unassigned.length > 0) {
     const totalVol = unassigned.reduce((s, m) => s + m.volume, 0);
@@ -239,7 +216,6 @@ export function clusterKeywords<T extends { keyword: string; searchVolume: numbe
     });
   }
 
-  // Sort by total volume descending
   clusters.sort((a, b) => b.totalVolume - a.totalVolume);
 
   return clusters;

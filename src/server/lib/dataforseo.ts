@@ -6,13 +6,33 @@ import {
   DataforseoLabsGoogleKeywordIdeasLiveRequestInfo,
   DataforseoLabsGoogleDomainRankOverviewLiveRequestInfo,
   DataforseoLabsGoogleRankedKeywordsLiveRequestInfo,
-  DataforseoLabsGoogleHistoricalSerpsLiveRequestInfo,
   DataforseoLabsGoogleCompetitorsDomainLiveRequestInfo,
   DataforseoLabsGoogleDomainIntersectionLiveRequestInfo,
   SerpGoogleMapsLiveAdvancedRequestInfo,
 } from "dataforseo-client";
 import { env } from "cloudflare:workers";
+import { getDomain } from "tldts";
 import { AppError } from "@/server/lib/errors";
+import {
+  dataforseoResponseSchema,
+  domainMetricsItemSchema,
+  domainRankedKeywordItemSchema,
+  labsKeywordDataItemSchema,
+  parseTaskItems,
+  relatedKeywordItemSchema,
+  serpSnapshotItemSchema,
+  type DataforseoTask,
+  type DomainMetricsItem,
+  type DomainRankedKeywordItem,
+  type LabsKeywordDataItem,
+  type RelatedKeywordItem,
+  type SerpLiveItem,
+} from "@/server/lib/dataforseoSchemas";
+export type {
+  DomainRankedKeywordItem,
+  LabsKeywordDataItem,
+  SerpLiveItem,
+} from "@/server/lib/dataforseoSchemas";
 
 // ---------------------------------------------------------------------------
 // SDK client factories (lazily created per-request using the env secret)
@@ -20,14 +40,12 @@ import { AppError } from "@/server/lib/errors";
 
 function createAuthenticatedFetch() {
   return (url: RequestInfo, init?: RequestInit): Promise<Response> => {
-    const apiKey = env.DATAFORSEO_API_KEY;
-    console.log("[DATAFORSEO] Making request to:", url, "API key present:", !!apiKey, "key length:", apiKey?.length ?? 0);
+    const headers = new Headers(init?.headers);
+    headers.set("Authorization", `Basic ${env.DATAFORSEO_API_KEY}`);
+
     const newInit: RequestInit = {
       ...init,
-      headers: {
-        ...init?.headers,
-        Authorization: `Basic ${apiKey}`,
-      },
+      headers,
     };
     return fetch(url, newInit).then((res) => {
       console.log("[DATAFORSEO] Response status:", res.status);
@@ -44,6 +62,29 @@ function getLabsApi() {
 
 function getSerpApi() {
   return new SerpApi(API_BASE, { fetch: createAuthenticatedFetch() });
+}
+
+async function postDataforseo(
+  path: string,
+  payload: unknown,
+): Promise<unknown> {
+  const authenticatedFetch = createAuthenticatedFetch();
+  const response = await authenticatedFetch(`${API_BASE}${path}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    throw new AppError(
+      "INTERNAL_ERROR",
+      `DataForSEO HTTP ${response.status} on ${path}`,
+    );
+  }
+
+  return await response.json();
 }
 
 // ---------------------------------------------------------------------------
@@ -90,32 +131,6 @@ function assertOk<T extends { status_code?: number; status_message?: string }>(
 // DataForSEO Labs API wrappers
 // ---------------------------------------------------------------------------
 
-type RelatedKeywordItem = {
-  keyword_data?: {
-    keyword?: string;
-    keyword_info?: {
-      search_volume?: number | null;
-      cpc?: number | null;
-      competition?: number | null;
-      monthly_searches?: Array<{
-        year: number;
-        month: number;
-        search_volume: number | null;
-      }> | null;
-    };
-    keyword_info_normalized_with_clickstream?: {
-      search_volume?: number | null;
-      monthly_searches?: Array<{
-        year: number;
-        month: number;
-        search_volume: number | null;
-      }> | null;
-    };
-    search_intent_info?: { main_intent?: string | null } | null;
-    keyword_properties?: { keyword_difficulty?: number | null } | null;
-  };
-};
-
 export async function fetchRelatedKeywordsRaw(
   keyword: string,
   locationCode: number,
@@ -135,36 +150,13 @@ export async function fetchRelatedKeywordsRaw(
   });
 
   const response = await api.googleRelatedKeywordsLive([req]);
-  const task = assertOk(response);
-
-  const result = (task as { result?: Array<{ items?: unknown[] }> })
-    .result?.[0];
-  return (result?.items ?? []) as RelatedKeywordItem[];
+  const task = assertOk<DataforseoTask>(response);
+  return parseTaskItems(
+    "google-related-keywords-live",
+    task,
+    relatedKeywordItemSchema,
+  );
 }
-
-export type LabsKeywordDataItem = {
-  keyword?: string;
-  keyword_info?: {
-    search_volume?: number | null;
-    cpc?: number | null;
-    competition?: number | null;
-    monthly_searches?: Array<{
-      year: number;
-      month: number;
-      search_volume: number | null;
-    }> | null;
-  };
-  keyword_info_normalized_with_clickstream?: {
-    search_volume?: number | null;
-    monthly_searches?: Array<{
-      year: number;
-      month: number;
-      search_volume: number | null;
-    }> | null;
-  };
-  search_intent_info?: { main_intent?: string | null } | null;
-  keyword_properties?: { keyword_difficulty?: number | null } | null;
-};
 
 export async function fetchKeywordSuggestionsRaw(
   keyword: string,
@@ -186,11 +178,12 @@ export async function fetchKeywordSuggestionsRaw(
   });
 
   const response = await api.googleKeywordSuggestionsLive([req]);
-  const task = assertOk(response);
-
-  const result = (task as { result?: Array<{ items?: unknown[] }> })
-    .result?.[0];
-  return (result?.items ?? []) as LabsKeywordDataItem[];
+  const task = assertOk<DataforseoTask>(response);
+  return parseTaskItems(
+    "google-keyword-suggestions-live",
+    task,
+    labsKeywordDataItemSchema,
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -416,23 +409,17 @@ export async function fetchKeywordIdeasRaw(
   });
 
   const response = await api.googleKeywordIdeasLive([req]);
-  const task = assertOk(response);
-
-  const result = (task as { result?: Array<{ items?: unknown[] }> })
-    .result?.[0];
-  return (result?.items ?? []) as LabsKeywordDataItem[];
+  const task = assertOk<DataforseoTask>(response);
+  return parseTaskItems(
+    "google-keyword-ideas-live",
+    task,
+    labsKeywordDataItemSchema,
+  );
 }
 
 // ---------------------------------------------------------------------------
 // Domain API wrappers
 // ---------------------------------------------------------------------------
-
-type DomainMetricsItem = {
-  metrics?: Record<
-    string,
-    { etv?: number | null; count?: number | null } | undefined
-  >;
-};
 
 export async function fetchDomainRankOverviewRaw(
   target: string,
@@ -448,42 +435,13 @@ export async function fetchDomainRankOverviewRaw(
   });
 
   const response = await api.googleDomainRankOverviewLive([req]);
-  const task = assertOk(response);
-
-  const result = (task as { result?: Array<{ items?: unknown[] }> })
-    .result?.[0];
-  return (result?.items ?? []) as DomainMetricsItem[];
+  const task = assertOk<DataforseoTask>(response);
+  return parseTaskItems(
+    "google-domain-rank-overview-live",
+    task,
+    domainMetricsItemSchema,
+  );
 }
-
-export type DomainRankedKeywordItem = {
-  keyword_data?: {
-    keyword?: string | null;
-    keyword_info?: {
-      search_volume?: number | null;
-      cpc?: number | null;
-      keyword_difficulty?: number | null;
-    } | null;
-    keyword_properties?: {
-      keyword_difficulty?: number | null;
-    } | null;
-  } | null;
-  ranked_serp_element?: {
-    serp_item?: {
-      url?: string | null;
-      relative_url?: string | null;
-      rank_absolute?: number | null;
-      etv?: number | null;
-    } | null;
-    url?: string | null;
-    relative_url?: string | null;
-    rank_absolute?: number | null;
-    etv?: number | null;
-  } | null;
-  keyword?: string | null;
-  rank_absolute?: number | null;
-  etv?: number | null;
-  keyword_difficulty?: number | null;
-};
 
 export async function fetchRankedKeywordsRaw(
   target: string,
@@ -502,64 +460,43 @@ export async function fetchRankedKeywordsRaw(
   });
 
   const response = await api.googleRankedKeywordsLive([req]);
-  const task = assertOk(response);
-
-  const result = (task as { result?: Array<{ items?: unknown[] }> })
-    .result?.[0];
-  return (result?.items ?? []) as DomainRankedKeywordItem[];
+  const task = assertOk<DataforseoTask>(response);
+  return parseTaskItems(
+    "google-ranked-keywords-live",
+    task,
+    domainRankedKeywordItemSchema,
+  );
 }
 
 // ---------------------------------------------------------------------------
-// SERP Analysis API wrapper
+// SERP Analysis API wrapper (Google Organic Live)
 // ---------------------------------------------------------------------------
 
-type SerpSnapshotItem = {
-  type?: string;
-  rank_group?: number | null;
-  rank_absolute?: number | null;
-  domain?: string | null;
-  title?: string | null;
-  url?: string | null;
-  description?: string | null;
-  breadcrumb?: string | null;
-  etv?: number | null;
-  estimated_paid_traffic_cost?: number | null;
-  backlinks_info?: {
-    referring_domains?: number | null;
-    backlinks?: number | null;
-  } | null;
-  rank_changes?: {
-    previous_rank_absolute?: number | null;
-    is_new?: boolean | null;
-    is_up?: boolean | null;
-    is_down?: boolean | null;
-  } | null;
-};
-
-type SerpSnapshot = {
-  se_results_count?: number | null;
-  items_count?: number | null;
-  items?: SerpSnapshotItem[];
-};
-
-export async function fetchHistoricalSerpsRaw(
+export async function fetchLiveSerpItemsRaw(
   keyword: string,
   locationCode: number,
   languageCode: string,
-): Promise<SerpSnapshot[]> {
-  const api = getLabsApi();
-  const req = new DataforseoLabsGoogleHistoricalSerpsLiveRequestInfo({
-    keyword,
-    location_code: locationCode,
-    language_code: languageCode,
-  });
-
-  const response = await api.googleHistoricalSerpsLive([req]);
-  const task = assertOk(response);
-
-  const result = (task as { result?: Array<{ items?: unknown[] }> })
-    .result?.[0];
-  return (result?.items ?? []) as SerpSnapshot[];
+): Promise<SerpLiveItem[]> {
+  const responseRaw = await postDataforseo(
+    "/v3/serp/google/organic/live/advanced",
+    [
+      {
+        keyword,
+        location_code: locationCode,
+        language_code: languageCode,
+        device: "desktop",
+        os: "windows",
+        depth: 100,
+      },
+    ],
+  );
+  const response = dataforseoResponseSchema.parse(responseRaw);
+  const task = assertOk<DataforseoTask>(response);
+  return parseTaskItems(
+    "google-organic-live-advanced",
+    task,
+    serpSnapshotItemSchema,
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -586,17 +523,26 @@ export function normalizeDomainInput(
     throw new AppError("VALIDATION_ERROR", "Domain is required");
   }
 
-  const withProtocol = /^https?:\/\//.test(trimmed)
+  const withProtocol = /^[a-zA-Z][a-zA-Z\d+.-]*:\/\//.test(trimmed)
     ? trimmed
     : `https://${trimmed}`;
 
-  const host = new URL(withProtocol).hostname.replace(/^www\./, "");
+  let host: string;
+  try {
+    host = new URL(withProtocol).hostname.toLowerCase().replace(/^www\./, "");
+  } catch {
+    throw new AppError("VALIDATION_ERROR", "Domain is invalid");
+  }
+
+  if (!host) {
+    throw new AppError("VALIDATION_ERROR", "Domain is invalid");
+  }
 
   if (includeSubdomains) {
     return host;
   }
 
-  return toRootDomain(host);
+  return getDomain(host) ?? host;
 }
 
 // ---------------------------------------------------------------------------
@@ -777,25 +723,4 @@ export async function fetchGoogleMapsResultsRaw(
   const result = (task as { result?: Array<{ items?: unknown[] }> })
     .result?.[0];
   return (result?.items ?? []) as GoogleMapsItem[];
-}
-
-function toRootDomain(host: string): string {
-  const parts = host.split(".").filter(Boolean);
-  if (parts.length <= 2) return host;
-
-  const knownSecondLevel = new Set([
-    "co.uk",
-    "org.uk",
-    "ac.uk",
-    "com.au",
-    "co.jp",
-  ]);
-  const lastTwo = `${parts[parts.length - 2]}.${parts[parts.length - 1]}`;
-  const lastThree = `${parts[parts.length - 3]}.${lastTwo}`;
-
-  if (knownSecondLevel.has(lastTwo) && parts.length >= 3) {
-    return lastThree;
-  }
-
-  return lastTwo;
 }

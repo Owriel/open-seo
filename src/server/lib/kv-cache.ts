@@ -1,5 +1,7 @@
 import { env } from "cloudflare:workers";
 import { sortBy } from "remeda";
+import { z } from "zod";
+import { jsonCodec } from "@/shared/json";
 import { db } from "@/db";
 import { cacheEntries } from "@/db/schema";
 import { eq, lte, sql } from "drizzle-orm";
@@ -17,6 +19,8 @@ export const CACHE_TTL = {
   competitors: CACHE_TTL_SECONDS,
   keywordIntersection: CACHE_TTL_SECONDS,
 } as const;
+
+const jsonUnknownCodec = jsonCodec(z.unknown());
 
 /** Category labels for human-readable display */
 const CATEGORY_LABELS: Record<string, string> = {
@@ -48,15 +52,11 @@ export function buildCacheKey(
 /**
  * Get a cached JSON value from KV. Returns null on miss.
  */
-export async function getCached<T>(key: string): Promise<T | null> {
+export async function getCached(key: string): Promise<unknown> {
   const value = await env.KV.get(key, "text");
   if (value === null) return null;
-
-  try {
-    return JSON.parse(value) as T;
-  } catch {
-    return null;
-  }
+  const parsed = jsonUnknownCodec.safeParse(value);
+  return parsed.success ? parsed.data : null;
 }
 
 /**

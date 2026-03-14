@@ -1,6 +1,6 @@
 # OpenSEO
 
-OpenSEO is an SEO tool for _the people_. If tools like Semrush or Ahrefs are too expensive or bloated, OpenSEO is a pay by usage alternative that you actually control.
+OpenSEO is an SEO tool for _the people_. If tools like Semrush or Ahrefs are too expensive or bloated, OpenSEO is a pay-as-you-go alternative that you actually control.
 
 ![OpenSEO demo (placeholder)](https://github.com/user-attachments/assets/6a928771-66ff-486b-b131-a54a3943985f)
 
@@ -12,7 +12,9 @@ OpenSEO is an SEO tool for _the people_. If tools like Semrush or Ahrefs are too
 - [Community](#community)
 - [Pricing / Costs (Free + API costs)](#pricing--costs)
 - [DataForSEO API Key Setup](#dataforseo-api-key-setup)
-- [Docker Self Hosting](#docker-self-hosting)
+- [Self-hosting](#self-hosting)
+  - [Cloudflare Self-Hosting](#cloudflare-self-hosting)
+  - [Docker Self Hosting](#docker-self-hosting)
 - [Local Development](#local-development)
 - [Contributing](#contributing)
 - [SEO API Cost Reference](#seo-api-cost-reference)
@@ -22,7 +24,7 @@ OpenSEO is an SEO tool for _the people_. If tools like Semrush or Ahrefs are too
 - Open source and self-hostable.
 - No subscriptions.
 - Focused workflows instead of a giant, complex SEO suite.
-- AI Native - Use your own tools like Claude Code / Cowork for more powerful AI features than what other platforms provide.
+- AI-native: use your own tools like Claude Code / Cowork for more powerful AI features than other platforms provide.
 
 ## Main SEO Workflows
 
@@ -37,6 +39,7 @@ OpenSEO is an SEO tool for _the people_. If tools like Semrush or Ahrefs are too
 
 Top priorities:
 
+- Backlinks
 - Rank tracking
 - AI content workflows
 
@@ -45,7 +48,7 @@ If something important is missing, please join the [Discord](https://discord.gg/
 ## Community
 
 Email me: ben@everyapp.dev
-Join discord to chat: [Discord](https://discord.gg/c9uGs3cFXr)
+Join Discord to chat: [Discord](https://discord.gg/c9uGs3cFXr)
 
 Follow along for updates:
 
@@ -65,7 +68,7 @@ For cost estimates, see [DataForSEO API Cost Reference](#seo-api-cost-reference)
 
 ## DataForSEO API Key Setup
 
-OpenSEO use DataForSEO to get the SEO info. You need an API key to connect OpenSEO to the service.
+OpenSEO uses DataForSEO to fetch SEO data. You need an API key to connect OpenSEO to the service.
 
 1. Go to [DataForSEO API Access](https://app.dataforseo.com/api-access).
 2. Request API credentials by email (`API key by email` or `API password by email`).
@@ -78,18 +81,65 @@ printf '%s' 'YOUR_LOGIN:YOUR_PASSWORD' | base64
 4. Set this as `DATAFORSEO_API_KEY` in your environment file:
 
 - Docker self-hosting: `.env`
+- Cloudflare: Set it in the workers UI
 - Local development: `.env.local`
 
+## Self-hosting
+
+OpenSEO supports two self-hosting paths:
+
+- Docker for your homelab or local use.
+- Cloudflare for use across multiple devices or for your team.
+
+If you already have Docker installed (or are willing to install it), that is the quickest way to test OpenSEO.
+
+Use this quick guide:
+
+- Choose Docker when:
+  - You already have Docker installed and want to get set up quickly.
+  - You have a homelab setup.
+  - You only want to use OpenSEO locally on one device.
+- Choose Cloudflare when:
+  - You want a more SaaS like experience.
+  - You want to use it from multiple devices or with teammates.
+  - You want support for more powerful future features, such as sharing public links to reports or running site audits that render your website's JavaScript.
+
 ## Docker Self Hosting
+
+Prerequisites:
+
+- Install Docker: https://www.docker.com/products/docker-desktop/
 
 Quickstart:
 
 1. `cp .env.example .env`
 2. Set `DATAFORSEO_API_KEY` in `.env`
-3. `docker compose up`
+3. `docker compose up -d`
 4. Open `http://localhost:<PORT>` (default `3001`)
 
-For runtime details, caveats, and troubleshooting, see [`SELF_HOSTING_DOCKER.md`](./SELF_HOSTING_DOCKER.md).
+Docker Compose passes `.env` values into the container, and the Docker self-host flow enables `CLOUDFLARE_INCLUDE_PROCESS_ENV=true` so the Cloudflare Vite runtime can read them as Worker bindings.
+
+By default, `compose.yaml` pulls the published image from GHCR:
+
+- `ghcr.io/every-app/open-seo:latest`
+
+Use a pinned version tag in `.env` if preferred:
+
+```sh
+OPEN_SEO_IMAGE=ghcr.io/every-app/open-seo:v1.2.3
+```
+
+For more info, see [`SELF_HOSTING_DOCKER.md`](./SELF_HOSTING_DOCKER.md).
+
+## Cloudflare Self-Hosting
+
+### Deploy the Worker
+
+Clicking this button opens a page to deploy OpenSEO in your Cloudflare account. If you do not have an account yet, it will take you to account creation first (OpenSEO works great on the free plan).
+
+Reference these docs while deploying since the Cloudflare UI doesn't indicate what steps you need to take: [`SELF_HOSTING_CLOUDFLARE.md`](./SELF_HOSTING_CLOUDFLARE.md).
+
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/every-app/open-seo)
 
 ## Local Development
 
@@ -99,46 +149,40 @@ For runtime details, caveats, and troubleshooting, see [`SELF_HOSTING_DOCKER.md`
 - [pnpm](https://pnpm.io/)
 - A DataForSEO account/API credentials
 
-### Run Locally (Quick Test)
-
-1. Copy env template:
-
-```sh
-cp .env.example .env.local
-```
-
-2. Install and run:
+### Local Development Workflow
 
 ```sh
 pnpm install
-# Initialize local DB schema (required on a fresh machine)
+
+# Run once per fresh local DB
 pnpm run db:migrate:local
-# This runs in BYPASS_GATEWAY mode for local use and quick testing.
-pnpm dev:agents
 ```
 
-`pnpm dev` runs on `http://localhost:3001` by default (or `PORT` from `.env.local`).
+Configure .env.local:
+
+1. `cp .env.example .env.local`
+2. Add `DATAFORSEO_API_KEY` as a base64-encoded `login:password` value:
+
+   `printf '%s' 'YOUR_LOGIN:YOUR_PASSWORD' | base64`
+
+Run Locally:
+
+```sh
+# Option 1
+pnpm run dev
+
+# Option 2 (Recommended)
+# This log file makes it easier for your coding agent to debug.
+mkdir .logs
+touch .logs/dev-server.log
+
+# This command uses portless, which is great for worktrees. It also pipes logs to that fixed file, which is helpful for agent debugging output.
+pnpm dev:agents
+```
 
 `pnpm dev:agents` runs through [portless](https://github.com/vercel-labs/portless) at `http://open-seo.localhost:1355` by default.
 
 When using a git worktree, [portless](https://github.com/vercel-labs/portless) prefixes the branch name, for example `http://feature-name.open-seo.localhost:1355`.
-
-Running locally is the fastest way to test core flows.
-
-### Local Development Workflow (for coding agents)
-
-```sh
-# This log file make it easier for your coding agent to debug.
-mkdir .logs
-touch .logs/dev-server.log
-# Run once per fresh local DB
-pnpm run db:migrate:local
-# terminal 1: start once and keep running
-pnpm dev:agents
-```
-
-- `pnpm dev:agents` mirrors output to `.logs/dev-server.log` (gitignored).
-- The log file is overwritten on each run.
 
 ### Database Commands
 
@@ -153,6 +197,17 @@ Migrate local DB:
 ```sh
 pnpm run db:migrate:local
 ```
+
+### Auth modes
+
+- `AUTH_MODE=cloudflare_access` (default): validates Cloudflare Access JWTs (`cf-access-jwt-assertion`) using `TEAM_DOMAIN` + `POLICY_AUD`.
+- `AUTH_MODE=local_noauth`: local trusted mode, no auth check, injects `admin@localhost`.
+- `AUTH_MODE=hosted`: reserved for upcoming multi-tenant auth flow (not yet implemented).
+
+Local scripts (`pnpm dev` and `pnpm dev:agents`) set `AUTH_MODE=local_noauth` automatically.
+Use `AUTH_MODE=cloudflare_access pnpm dev` when you specifically want to test Access validation locally.
+
+For Cloudflare deployments, ensure Cloudflare Access is enabled on your Worker route/domain and provide `TEAM_DOMAIN` + `POLICY_AUD` in environment variables.
 
 ## Contributing
 

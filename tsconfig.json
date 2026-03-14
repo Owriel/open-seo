@@ -1,5 +1,6 @@
 {
   "include": ["**/*.ts", "**/*.tsx"],
+  "exclude": ["web/**/*"],
   "compilerOptions": {
     "strict": true,
     "esModuleInterop": true,
@@ -13,7 +14,6 @@
     "target": "ES2022",
     "allowJs": true,
     "forceConsistentCasingInFileNames": true,
-    "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]
     },

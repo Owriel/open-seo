@@ -30,10 +30,10 @@ export const findCompetitors = createServerFn({ method: "POST" })
       languageCode: data.languageCode,
     });
 
-    const cached = await getCached<{ competitors: CompetitorRow[] }>(cacheKey);
-    if (cached && cached.competitors?.length > 0) {
-      console.log("[COMPETITORS] Serving from cache:", cached.competitors.length, "competitors");
-      return cached;
+    const cachedRaw = await getCached(cacheKey) as { competitors: CompetitorRow[] } | null;
+    if (cachedRaw && cachedRaw.competitors?.length > 0) {
+      console.log("[COMPETITORS] Serving from cache:", cachedRaw.competitors.length, "competitors");
+      return cachedRaw;
     }
 
     console.log("[COMPETITORS] Cache miss, calling DataForSEO...");
@@ -87,10 +87,10 @@ export const getKeywordIntersection = createServerFn({ method: "POST" })
       limit: data.limit,
     });
 
-    const cached = await getCached<{ keywords: KeywordIntersectionRow[]; totalCount: number }>(cacheKey);
-    if (cached && cached.keywords?.length > 0) {
-      console.log("[INTERSECTION] Serving from cache:", cached.keywords.length, "keywords");
-      return cached;
+    const cachedRaw = await getCached(cacheKey) as { keywords: KeywordIntersectionRow[]; totalCount: number } | null;
+    if (cachedRaw && cachedRaw.keywords?.length > 0) {
+      console.log("[INTERSECTION] Serving from cache:", cachedRaw.keywords.length, "keywords");
+      return cachedRaw;
     }
 
     console.log("[INTERSECTION] Cache miss, calling DataForSEO...");

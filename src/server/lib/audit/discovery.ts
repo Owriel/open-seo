@@ -79,18 +79,48 @@ function isProbablySitemapXml(
 
 function getSitemapLocations(input: unknown): string[] {
   if (!input) return [];
-  const entries: Array<{ loc?: string }> = Array.isArray(input)
-    ? (input as Array<{ loc?: string }>)
-    : ([input] as Array<{ loc?: string }>);
+  const entries = Array.isArray(input) ? input : [input];
   return entries
-    .map((entry) => entry.loc)
+    .map((entry) => {
+      if (isRecord(entry)) {
+        const loc = entry["loc"];
+        return typeof loc === "string" ? loc : null;
+      }
+      return null;
+    })
     .filter((loc): loc is string => typeof loc === "string");
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === "object";
+}
+
+function getParsedSitemapSections(parsed: unknown): {
+  sitemap: unknown;
+  url: unknown;
+} {
+  if (!parsed || typeof parsed !== "object") {
+    return { sitemap: undefined, url: undefined };
+  }
+
+  const root = parsed as {
+    sitemapindex?: { sitemap?: unknown };
+    urlset?: { url?: unknown };
+  };
+
+  return {
+    sitemap: root.sitemapindex?.sitemap,
+    url: root.urlset?.url,
+  };
 }
 
 function isTimeoutError(error: unknown): boolean {
   if (!error || typeof error !== "object") return false;
-  const maybe = error as { name?: string };
-  return maybe.name === "TimeoutError";
+  return "name" in error && error.name === "TimeoutError";
+}
+
+function parseXmlDocument(body: string): unknown {
+  return xmlParser.parse(body) as unknown;
 }
 
 async function fetchSitemapDocumentWithRetry(sitemapUrl: string): Promise<{
@@ -126,11 +156,12 @@ async function fetchSitemapDocumentWithRetry(sitemapUrl: string): Promise<{
         return { nestedSitemaps: [], pageUrls: [], timedOut: false };
       }
 
-      const parsed = xmlParser.parse(body);
-      const nestedSitemaps = getSitemapLocations(parsed.sitemapindex?.sitemap)
+      const parsed = parseXmlDocument(body);
+      const sections = getParsedSitemapSections(parsed);
+      const nestedSitemaps = getSitemapLocations(sections.sitemap)
         .map((loc) => normalizeUrl(loc, finalUrl))
         .filter((loc): loc is string => loc !== null);
-      const pageUrls = getSitemapLocations(parsed.urlset?.url)
+      const pageUrls = getSitemapLocations(sections.url)
         .map((loc) => normalizeUrl(loc, finalUrl))
         .filter((loc): loc is string => loc !== null);
 

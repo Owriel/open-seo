@@ -1,87 +1,73 @@
 # Docker Self-Hosting
 
-This guide runs OpenSEO as a local service without Every App Gateway.
+Run OpenSEO locally with Docker.
 
-In this mode, OpenSEO runs with `BYPASS_GATEWAY_LOCAL_ONLY=true`, so authentication and Gateway-managed user accounts are disabled.
+In Docker mode, OpenSEO uses `AUTH_MODE=local_noauth` (no auth checks, local admin user `admin@localhost`).
+
+The default `compose.yaml` uses the published GHCR image:
+
+- `ghcr.io/every-app/open-seo:latest`
 
 ## Prerequisites
 
 - Docker Desktop (or Docker Engine + Docker Compose)
 
-## Security and runtime caveats
-
-This stack is local-first and uses dev runtimes to emulate Cloudflare Worker bindings.
-
-- Do not expose these ports directly to the public internet.
-- There is no built-in Gateway auth in this mode.
-- If you expose it beyond localhost, put it behind the same authentication layer you use for your other self-hosted services (or use the [Cloudflare deployment path](./README.md#self-hosting-deploy-on-cloudflare-5-10-minutes)).
-
-## 1) Configure env values
-
-From the repository root:
+## Quickstart
 
 ```bash
 cp .env.example .env
+docker compose up -d
 ```
 
-Set values as needed in `.env`.
+Set `DATAFORSEO_API_KEY` in `.env`, then open `http://localhost:<PORT>` (default `3001`).
 
-Required:
+Docker Compose passes `.env` values into the container, and `compose.yaml` enables `CLOUDFLARE_INCLUDE_PROCESS_ENV=true` so the Cloudflare Vite runtime can read them as Worker bindings during local self-hosting.
 
-- `DATAFORSEO_API_KEY`
-
-Optional:
+Optional env values:
 
 - `PORT` (defaults to `3001`)
-- `VITE_APP_ID` (defaults to `open-seo`)
-- `BYPASS_GATEWAY_LOCAL_ONLY=true` (Docker compose already sets this)
+- `AUTH_MODE=local_noauth` (already set in compose)
+- `OPEN_SEO_IMAGE` (defaults to `ghcr.io/every-app/open-seo:latest`)
 
-## 2) Start OpenSEO
+## Pin to a specific image tag
+
+Set `OPEN_SEO_IMAGE` in `.env` and restart:
 
 ```bash
-docker compose up
+OPEN_SEO_IMAGE=ghcr.io/every-app/open-seo:v1.2.3
+docker compose up -d
 ```
 
-URL:
+## Build your own image locally
 
-- OpenSEO: `http://localhost:<PORT>` (defaults to `3001`)
+If you are testing local code changes, build and run a local tag:
 
-Boot behavior:
+```bash
+docker build -f Dockerfile.selfhost -t open-seo:local .
+OPEN_SEO_IMAGE=open-seo:local docker compose up -d
+```
 
-- Uses dependencies installed during image build.
-- Applies local D1 migrations on start.
-- Starts local dev runtime (Vite).
+## Common commands
 
-## Troubleshooting
-
-- OpenSEO env values seem stale: restart OpenSEO:
+- Restart service after env changes:
 
 ```bash
 docker compose up -d open-seo
 ```
 
-- If migrations fail on first run, rebuild and retry:
+- Pull latest published image and restart:
 
 ```bash
-docker compose down
-docker compose up
+docker compose pull && docker compose up -d
 ```
 
-If you update dependencies or Docker build config, force a rebuild:
-
-```bash
-docker compose up --build
-```
-
-## Stop and cleanup
-
-Stop stack:
+- Stop:
 
 ```bash
 docker compose down
 ```
 
-Stop and remove Docker volumes:
+- Stop and remove volumes:
 
 ```bash
 docker compose down -v

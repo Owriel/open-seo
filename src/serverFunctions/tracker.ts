@@ -10,7 +10,7 @@ import { trackedKeywords, rankHistory } from "@/db/schema";
 import { db } from "@/db";
 import { eq, desc } from "drizzle-orm";
 import type { TrackedKeywordRow } from "@/types/tracker";
-import { fetchHistoricalSerpsRaw } from "@/server/lib/dataforseo";
+import { fetchLiveSerpItemsRaw } from "@/server/lib/dataforseo";
 
 export const addTrackedKeywords = createServerFn({ method: "POST" })
   .middleware(authenticatedServerFunctionMiddleware)
@@ -117,23 +117,19 @@ export const checkRankings = createServerFn({ method: "POST" })
 
     for (const tk of tracked) {
       try {
-        // Use Historical SERPs to find current ranking
-        const serpSnapshots = await fetchHistoricalSerpsRaw(
+        // Usar Live SERP para encontrar el ranking actual
+        const serpItems = await fetchLiveSerpItemsRaw(
           tk.keyword,
           tk.locationCode,
           tk.languageCode,
         );
 
-        // Get most recent snapshot
-        const latestSnapshot = serpSnapshots[0];
-        const items = (latestSnapshot as unknown as { items?: Array<{ domain?: string; rank_absolute?: number; rank_group?: number; url?: string }> })?.items ?? [];
-
-        // Find our domain in the results
+        // Buscar nuestro dominio en los resultados
         let position: number | null = null;
         let url: string | null = null;
         const domainLower = tk.domain.toLowerCase();
 
-        for (const item of items) {
+        for (const item of serpItems) {
           const itemDomain = (item.domain ?? "").toLowerCase();
           if (itemDomain.includes(domainLower) || domainLower.includes(itemDomain)) {
             position = item.rank_absolute ?? item.rank_group ?? null;

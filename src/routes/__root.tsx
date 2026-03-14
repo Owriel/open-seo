@@ -2,10 +2,8 @@
 import {
   ClientOnly,
   HeadContent,
-  Link,
   Scripts,
   createRootRoute,
-  Outlet,
   useLocation,
 } from "@tanstack/react-router";
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
@@ -13,14 +11,20 @@ import { TanStackDevtools } from "@tanstack/react-devtools";
 import { QueryClientProvider } from "@tanstack/react-query";
 import * as React from "react";
 import { useState } from "react";
-import { Menu, ChevronsUpDown } from "lucide-react";
 import { DefaultCatchBoundary } from "@/client/components/DefaultCatchBoundary";
 import { NotFound } from "@/client/components/NotFound";
 import appCss from "@/client/styles/app.css?url";
 import { Toaster } from "sonner";
-import { Sidebar } from "@/client/components/Sidebar";
 import { queryClient } from "@/client/tanstack-db";
-import { projectNavItems } from "@/client/navigation/items";
+import { getSeoApiKeyStatus } from "@/serverFunctions/config";
+import {
+  AppContent,
+  MissingSeoSetupModal,
+  SeoApiStatusBanners,
+  TopNav,
+} from "@/client/layout/AppShell";
+
+const DATAFORSEO_HELP_PATH = "/help/dataforseo-api-key";
 
 export const Route = createRootRoute({
   head: () => ({
@@ -60,7 +64,6 @@ export const Route = createRootRoute({
         sizes: "16x16",
         href: "/favicon-16x16.png",
       },
-      { rel: "manifest", href: "/site.webmanifest", color: "#fffff" },
       { rel: "icon", href: "/favicon.ico" },
     ],
     scripts: [],
@@ -74,110 +77,99 @@ export const Route = createRootRoute({
 function AppLayout() {
   const location = useLocation();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const setupModalRef = React.useRef<HTMLDivElement | null>(null);
+  const [isSeoApiKeyConfigured, setIsSeoApiKeyConfigured] = useState<
+    boolean | null
+  >(null);
+  const [seoApiKeyStatusError, setSeoApiKeyStatusError] = useState(false);
+  const [showMissingSeoApiKeyModal, setShowMissingSeoApiKeyModal] =
+    useState(false);
 
   // Extract projectId from the current path
   const projectIdMatch = location.pathname.match(/^\/p\/([^/]+)/);
   const projectId = projectIdMatch?.[1] ?? null;
 
+  React.useEffect(() => {
+    let cancelled = false;
+
+    const checkSeoApiKeyStatus = async () => {
+      try {
+        const result = await getSeoApiKeyStatus();
+        if (cancelled) return;
+
+        setSeoApiKeyStatusError(false);
+        setIsSeoApiKeyConfigured(result.configured);
+        if (!result.configured) {
+          setShowMissingSeoApiKeyModal(true);
+        }
+      } catch {
+        if (cancelled) return;
+        setSeoApiKeyStatusError(true);
+        setIsSeoApiKeyConfigured(null);
+        setShowMissingSeoApiKeyModal(false);
+      }
+    };
+
+    void checkSeoApiKeyStatus();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const shouldShowMissingSeoApiKeyModal =
+    showMissingSeoApiKeyModal && location.pathname !== DATAFORSEO_HELP_PATH;
+
+  const shouldShowSeoApiWarning =
+    !seoApiKeyStatusError &&
+    isSeoApiKeyConfigured === false &&
+    !shouldShowMissingSeoApiKeyModal;
+
+  React.useEffect(() => {
+    if (!shouldShowMissingSeoApiKeyModal) return;
+
+    setupModalRef.current?.focus();
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setShowMissingSeoApiKeyModal(false);
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [shouldShowMissingSeoApiKeyModal]);
+
   return (
     <div className="flex flex-col h-[100dvh] bg-base-200">
-      {/* Top Navbar */}
-      <div className="navbar bg-base-100 border-b border-base-300 shrink-0 gap-2">
-        {/* Mobile: hamburger + title */}
-        <div className="flex-none flex items-center md:hidden">
-          <button
-            type="button"
-            className="btn btn-square btn-ghost"
-            aria-label="Toggle sidebar"
-            aria-expanded={drawerOpen}
-            onClick={() => setDrawerOpen(true)}
-          >
-            <Menu className="h-6 w-6" />
-          </button>
-          <span className="font-semibold text-base-content ml-1">
-            OpenSEO
-          </span>
-        </div>
+      <TopNav
+        drawerOpen={drawerOpen}
+        projectId={projectId}
+        pathname={location.pathname}
+        onOpenDrawer={() => setDrawerOpen(true)}
+      />
 
-        {/* Desktop: EveryApp brand + nav links (left) */}
-        <div className="hidden md:flex items-center gap-1">
-          <a
-            href={import.meta.env.VITE_GATEWAY_URL}
-            target="_top"
-            className="text-lg font-semibold text-base-content hover:text-primary transition-colors px-2"
-          >
-            OpenSEO
-          </a>
-          {projectId &&
-            projectNavItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = location.pathname.includes(item.matchSegment);
+      <SeoApiStatusBanners
+        helpPath={DATAFORSEO_HELP_PATH}
+        shouldShowSeoApiWarning={shouldShowSeoApiWarning}
+        seoApiKeyStatusError={seoApiKeyStatusError}
+      />
 
-              return (
-                <Link
-                  key={item.to}
-                  to={item.to}
-                  params={{ projectId }}
-                  className={`btn btn-sm gap-2 ${
-                    isActive
-                      ? "bg-primary/10 text-primary font-medium border-transparent"
-                      : "btn-ghost text-base-content/60 hover:text-base-content"
-                  }`}
-                >
-                  <Icon className="h-4 w-4" />
-                  {item.label}
-                </Link>
-              );
-            })}
-        </div>
+      <AppContent
+        drawerOpen={drawerOpen}
+        pathname={location.pathname}
+        projectId={projectId}
+        onCloseDrawer={() => setDrawerOpen(false)}
+      />
 
-        {/* Spacer */}
-        <div className="flex-1" />
-
-        {/* Desktop: project switcher (right-aligned) */}
-        <div className="flex-none hidden md:flex">
-          <div
-            className="tooltip tooltip-left before:whitespace-nowrap"
-            data-tip="Próximamente: múltiples proyectos"
-          >
-            <button className="btn btn-ghost btn-sm font-medium text-sm gap-1 cursor-default">
-              <span className="truncate">Predeterminado</span>
-              <ChevronsUpDown className="size-3.5 shrink-0 text-base-content/40" />
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Mobile: drawer layout */}
-      <div className="flex-1 min-h-0 md:hidden">
-        <div className="h-full overflow-auto">
-          <Outlet />
-        </div>
-
-        {drawerOpen ? (
-          <div className="fixed inset-0 z-50">
-            <button
-              type="button"
-              aria-label="Cerrar menú"
-              className="absolute inset-0 bg-black/45"
-              onClick={() => setDrawerOpen(false)}
-            />
-            <div className="absolute left-0 top-0 h-full">
-              <Sidebar
-                currentPath={location.pathname}
-                projectId={projectId}
-                onNavigate={() => setDrawerOpen(false)}
-                onClose={() => setDrawerOpen(false)}
-              />
-            </div>
-          </div>
-        ) : null}
-      </div>
-
-      {/* Desktop: plain content area */}
-      <div className="hidden md:block flex-1 min-h-0 overflow-auto">
-        <Outlet />
-      </div>
+      <MissingSeoSetupModal
+        ref={setupModalRef}
+        helpPath={DATAFORSEO_HELP_PATH}
+        isOpen={shouldShowMissingSeoApiKeyModal}
+        onClose={() => setShowMissingSeoApiKeyModal(false)}
+      />
     </div>
   );
 }
@@ -196,10 +188,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
           <QueryClientProvider client={queryClient}>
             <>
               {children}
-              <Toaster
-                position="bottom-right"
-                mobileOffset={{ bottom: 100 }}
-              />
+              <Toaster position="bottom-right" mobileOffset={{ bottom: 100 }} />
               {showDevtools ? (
                 <TanStackDevtools
                   config={{ position: "bottom-right" }}

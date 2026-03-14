@@ -7,6 +7,7 @@ import {
   removeSavedKeyword,
 } from "@/serverFunctions/keywords";
 import { Trash2, Download, Search, Loader2, AlertCircle } from "lucide-react";
+import { buildCsv, downloadCsv } from "@/client/lib/csv";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
 
 export const Route = createFileRoute("/p/$projectId/saved")({
@@ -32,10 +33,10 @@ function SavedKeywordsPage() {
       void queryClient.invalidateQueries({
         queryKey: ["savedKeywords", projectId],
       });
-      toast.success("Keyword eliminada");
+      toast.success("Keyword removed");
     },
     onError: (error) => {
-      setRemoveError(getStandardErrorMessage(error, "Error al eliminar."));
+      setRemoveError(getStandardErrorMessage(error, "Remove failed."));
     },
   });
 
@@ -53,7 +54,7 @@ function SavedKeywordsPage() {
 
   const exportCsv = () => {
     if (savedKeywords.length === 0) {
-      toast.error("No hay keywords para exportar");
+      toast.error("No keywords to export");
       return;
     }
 
@@ -64,50 +65,74 @@ function SavedKeywordsPage() {
       "Competition",
       "Difficulty",
       "Intent",
-      "Location",
       "Fetched At",
     ];
-    const csvRows = savedKeywords.map((kw) =>
-      [
-        csvEscape(kw.keyword),
-        kw.searchVolume ?? "",
-        kw.cpc?.toFixed(2) ?? "",
-        kw.competition?.toFixed(2) ?? "",
-        kw.keywordDifficulty ?? "",
-        kw.intent ?? "",
-        kw.locationCode ?? "",
-        kw.fetchedAt ?? "",
-      ].join(","),
-    );
-    const csv = [headers.join(","), ...csvRows].join("\n");
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "saved-keywords.csv";
-    link.click();
-    URL.revokeObjectURL(url);
+    const csvRows = savedKeywords.map((kw) => [
+      kw.keyword,
+      kw.searchVolume ?? "",
+      kw.cpc?.toFixed(2) ?? "",
+      kw.competition?.toFixed(2) ?? "",
+      kw.keywordDifficulty ?? "",
+      kw.intent ?? "",
+      kw.fetchedAt ?? "",
+    ]);
+    const csv = buildCsv(headers, csvRows);
+    downloadCsv("saved-keywords.csv", csv);
   };
 
   return (
+    <SavedKeywordsContent
+      isLoading={isLoading}
+      removeError={removeError}
+      removingId={removingId}
+      savedKeywords={savedKeywords}
+      onExportCsv={exportCsv}
+      onRemoveKeyword={handleRemoveKeyword}
+    />
+  );
+}
+
+function SavedKeywordsContent({
+  isLoading,
+  removeError,
+  removingId,
+  savedKeywords,
+  onExportCsv,
+  onRemoveKeyword,
+}: {
+  isLoading: boolean;
+  removeError: string | null;
+  removingId: string | null;
+  savedKeywords: Array<{
+    id: string;
+    keyword: string;
+    searchVolume: number | null;
+    cpc: number | null;
+    competition: number | null;
+    keywordDifficulty: number | null;
+    intent: string | null;
+    fetchedAt: string | null;
+  }>;
+  onExportCsv: () => void;
+  onRemoveKeyword: (savedKeywordId: string) => void;
+}) {
+  return (
     <div className="px-4 py-4 md:px-6 md:py-6 pb-24 md:pb-8 overflow-auto">
       <div className="mx-auto max-w-5xl space-y-4">
-        {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-semibold">Keywords Guardadas</h1>
+            <h1 className="text-2xl font-semibold">Saved Keywords</h1>
             <p className="text-sm text-base-content/70">
-              Keywords que has guardado de tus investigaciones.
+              Keywords you&apos;ve saved from keyword research.
             </p>
           </div>
           {savedKeywords.length > 0 && (
-            <button className="btn btn-sm" onClick={exportCsv}>
-              <Download className="size-4" /> Exportar CSV
+            <button className="btn btn-sm" onClick={onExportCsv}>
+              <Download className="size-4" /> Export CSV
             </button>
           )}
         </div>
 
-        {/* Keyword list */}
         {isLoading ? (
           <div className="card bg-base-100 border border-base-300">
             <div className="card-body gap-3" aria-busy>
@@ -133,8 +158,8 @@ function SavedKeywordsPage() {
             <div className="card-body text-center py-12 text-base-content/50">
               <Search className="size-8 mx-auto mb-2 opacity-40" />
               <p>
-                Aún no tienes keywords guardadas. Usa la sección de
-                Investigación de Keywords para encontrar y guardar keywords.
+                No saved keywords yet. Use the Keyword Research page to find and
+                save keywords.
               </p>
             </div>
           </div>
@@ -148,72 +173,95 @@ function SavedKeywordsPage() {
                 </div>
               ) : null}
               <p className="text-sm text-base-content/70">
-                {savedKeywords.length} keyword
-                {savedKeywords.length !== 1 ? "s guardadas" : " guardada"}
+                {savedKeywords.length} saved keyword
+                {savedKeywords.length !== 1 ? "s" : ""}
               </p>
-              <div className="overflow-x-auto">
-                <table className="table table-zebra table-sm">
-                  <thead>
-                    <tr>
-                      <th>Keyword</th>
-                      <th>Volumen</th>
-                      <th>CPC</th>
-                      <th>Competencia</th>
-                      <th>Dificultad</th>
-                      <th>Intención</th>
-                      <th>Última consulta</th>
-                      <th></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {savedKeywords.map((kw) => (
-                      <tr key={kw.id}>
-                        <td className="font-medium">{kw.keyword}</td>
-                        <td>{formatNumber(kw.searchVolume)}</td>
-                        <td>
-                          {kw.cpc == null ? "-" : `$${kw.cpc.toFixed(2)}`}
-                        </td>
-                        <td>
-                          {kw.competition == null
-                            ? "-"
-                            : kw.competition.toFixed(2)}
-                        </td>
-                        <td>
-                          <DifficultyBadge value={kw.keywordDifficulty} />
-                        </td>
-                        <td>
-                          <span className="badge badge-sm badge-ghost">
-                            {kw.intent ?? "?"}
-                          </span>
-                        </td>
-                        <td className="text-xs text-base-content/50">
-                          {kw.fetchedAt
-                            ? new Date(kw.fetchedAt).toLocaleDateString()
-                            : "-"}
-                        </td>
-                        <td>
-                          <button
-                            className="btn btn-ghost btn-xs text-error"
-                            onClick={() => handleRemoveKeyword(kw.id)}
-                            disabled={removingId === kw.id}
-                            title="Eliminar"
-                          >
-                            {removingId === kw.id ? (
-                              <Loader2 className="size-3 animate-spin" />
-                            ) : (
-                              <Trash2 className="size-3" />
-                            )}
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <SavedKeywordsTable
+                rows={savedKeywords}
+                removingId={removingId}
+                onRemoveKeyword={onRemoveKeyword}
+              />
             </div>
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function SavedKeywordsTable({
+  rows,
+  removingId,
+  onRemoveKeyword,
+}: {
+  rows: Array<{
+    id: string;
+    keyword: string;
+    searchVolume: number | null;
+    cpc: number | null;
+    competition: number | null;
+    keywordDifficulty: number | null;
+    intent: string | null;
+    fetchedAt: string | null;
+  }>;
+  removingId: string | null;
+  onRemoveKeyword: (savedKeywordId: string) => void;
+}) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="table table-zebra table-sm">
+        <thead>
+          <tr>
+            <th>Keyword</th>
+            <th>Volume</th>
+            <th>CPC</th>
+            <th>Competition</th>
+            <th>Difficulty</th>
+            <th>Intent</th>
+            <th>Last Fetched</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((kw) => (
+            <tr key={kw.id}>
+              <td className="font-medium">{kw.keyword}</td>
+              <td>{formatNumber(kw.searchVolume)}</td>
+              <td>{kw.cpc == null ? "-" : `$${kw.cpc.toFixed(2)}`}</td>
+              <td>
+                {kw.competition == null ? "-" : kw.competition.toFixed(2)}
+              </td>
+              <td>
+                <DifficultyBadge value={kw.keywordDifficulty} />
+              </td>
+              <td>
+                <span className="badge badge-sm badge-ghost">
+                  {kw.intent ?? "?"}
+                </span>
+              </td>
+              <td className="text-xs text-base-content/50">
+                {kw.fetchedAt
+                  ? new Date(kw.fetchedAt).toLocaleDateString()
+                  : "-"}
+              </td>
+              <td>
+                <button
+                  className="btn btn-ghost btn-xs text-error"
+                  onClick={() => onRemoveKeyword(kw.id)}
+                  disabled={removingId === kw.id}
+                  title="Remove"
+                >
+                  {removingId === kw.id ? (
+                    <Loader2 className="size-3 animate-spin" />
+                  ) : (
+                    <Trash2 className="size-3" />
+                  )}
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
@@ -231,10 +279,4 @@ function DifficultyBadge({ value }: { value: number | null }) {
 function formatNumber(value: number | null | undefined) {
   if (value == null) return "-";
   return new Intl.NumberFormat().format(value);
-}
-
-function csvEscape(value: string | number | null | undefined): string {
-  if (value == null) return "";
-  const text = String(value).replace(/"/g, '""');
-  return `"${text}"`;
 }
