@@ -11,9 +11,11 @@ import {
   updateCategorySchema,
   deleteCategorySchema,
   assignCategorySchema,
+  searchPlacesSchema,
+  deleteFichasBulkSchema,
 } from "@/types/schemas/multilang";
-import type { MultilangDB, MultilangFicha } from "@/types/multilang";
-import { analyzeFicha } from "@/server/lib/multilang";
+import type { MultilangDB, MultilangFicha, PlaceSearchResult } from "@/types/multilang";
+import { analyzeFicha, searchPlaces as searchPlacesLib } from "@/server/lib/multilang";
 
 // ============================================================================
 // Helpers de KV
@@ -232,3 +234,29 @@ export const assignCategory = createServerFn({ method: "POST" })
     await saveDB(data.projectId, db);
     return { ok: true };
   });
+
+// ============================================================================
+// Búsqueda de Places y acciones bulk
+// ============================================================================
+
+/** Buscar fichas en Google Places (hasta 5 resultados con rating/reseñas) */
+export const searchPlacesAction = createServerFn({ method: "POST" })
+  .middleware(authenticatedServerFunctionMiddleware)
+  .inputValidator((data: unknown) => searchPlacesSchema.parse(data))
+  .handler(async ({ data }): Promise<PlaceSearchResult[]> => {
+    return searchPlacesLib(data.query);
+  });
+
+/** Eliminar fichas en bulk */
+export const deleteFichasBulk = createServerFn({ method: "POST" })
+  .middleware(authenticatedServerFunctionMiddleware)
+  .inputValidator((data: unknown) => deleteFichasBulkSchema.parse(data))
+  .handler(async ({ data }): Promise<{ deleted: number }> => {
+    const db = await loadDB(data.projectId);
+    const idsSet = new Set(data.fichaIds);
+    const before = db.fichas.length;
+    db.fichas = db.fichas.filter((f) => !idsSet.has(f.id));
+    await saveDB(data.projectId, db);
+    return { deleted: before - db.fichas.length };
+  });
+

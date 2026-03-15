@@ -15,6 +15,7 @@
     },
   ],
   "vars": {
+    "AUTH_MODE": "local_noauth",
     "AUTH_SECRET": "openseo-hmac-secret-k8x2m9p4"
   },
   "kv_namespaces": [

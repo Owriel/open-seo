@@ -32,6 +32,8 @@ const CATEGORY_LABELS: Record<string, string> = {
   "local:keywords": "SEO Local - Keywords",
   "comp:find": "Competidores",
   "comp:intersection": "Intersección de Keywords",
+  "cluster:gen": "Clusters de Keywords",
+  "opp:dataforseo": "Oportunidades (DataForSEO)",
 };
 
 /**

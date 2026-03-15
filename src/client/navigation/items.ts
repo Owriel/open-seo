@@ -1,4 +1,4 @@
-import { Bookmark, Bot, ClipboardCheck, Database, Globe, Languages, MapPin, Search, TrendingUp, Users } from "lucide-react";
+import { BarChart3, Bookmark, Bot, ClipboardCheck, Database, FileText, Globe, Languages, MapPin, Network, Search, Target, TrendingUp, Users } from "lucide-react";
 
 export const projectNavItems = [
   {
@@ -42,6 +42,30 @@ export const projectNavItems = [
     label: "Multiidioma",
     icon: Languages,
     matchSegment: "/multilang",
+  },
+  {
+    to: "/p/$projectId/serp" as const,
+    label: "SERP",
+    icon: BarChart3,
+    matchSegment: "/serp",
+  },
+  {
+    to: "/p/$projectId/opportunities" as const,
+    label: "Oportunidades",
+    icon: Target,
+    matchSegment: "/opportunities",
+  },
+  {
+    to: "/p/$projectId/clusters" as const,
+    label: "Clusters",
+    icon: Network,
+    matchSegment: "/clusters",
+  },
+  {
+    to: "/p/$projectId/wordpress" as const,
+    label: "WordPress",
+    icon: FileText,
+    matchSegment: "/wordpress",
   },
   {
     to: "/p/$projectId/audit" as const,

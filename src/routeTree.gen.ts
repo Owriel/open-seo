@@ -13,13 +13,17 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as HelpDataforseoApiKeyRouteImport } from './routes/help/dataforseo-api-key'
 import { Route as PProjectIdRouteRouteImport } from './routes/p/$projectId/route'
 import { Route as PProjectIdIndexRouteImport } from './routes/p/$projectId/index'
+import { Route as PProjectIdWordpressRouteImport } from './routes/p/$projectId/wordpress'
 import { Route as PProjectIdTrackerRouteImport } from './routes/p/$projectId/tracker'
+import { Route as PProjectIdSerpRouteImport } from './routes/p/$projectId/serp'
 import { Route as PProjectIdSavedRouteImport } from './routes/p/$projectId/saved'
+import { Route as PProjectIdOpportunitiesRouteImport } from './routes/p/$projectId/opportunities'
 import { Route as PProjectIdMultilangRouteImport } from './routes/p/$projectId/multilang'
 import { Route as PProjectIdLocalRouteImport } from './routes/p/$projectId/local'
 import { Route as PProjectIdKeywordsRouteImport } from './routes/p/$projectId/keywords'
 import { Route as PProjectIdDomainRouteImport } from './routes/p/$projectId/domain'
 import { Route as PProjectIdCompetitorsRouteImport } from './routes/p/$projectId/competitors'
+import { Route as PProjectIdClustersRouteImport } from './routes/p/$projectId/clusters'
 import { Route as PProjectIdCacheRouteImport } from './routes/p/$projectId/cache'
 import { Route as PProjectIdAuditRouteImport } from './routes/p/$projectId/audit'
 import { Route as PProjectIdAiRouteImport } from './routes/p/$projectId/ai'
@@ -47,14 +51,29 @@ const PProjectIdIndexRoute = PProjectIdIndexRouteImport.update({
   path: '/',
   getParentRoute: () => PProjectIdRouteRoute,
 } as any)
+const PProjectIdWordpressRoute = PProjectIdWordpressRouteImport.update({
+  id: '/wordpress',
+  path: '/wordpress',
+  getParentRoute: () => PProjectIdRouteRoute,
+} as any)
 const PProjectIdTrackerRoute = PProjectIdTrackerRouteImport.update({
   id: '/tracker',
   path: '/tracker',
   getParentRoute: () => PProjectIdRouteRoute,
 } as any)
+const PProjectIdSerpRoute = PProjectIdSerpRouteImport.update({
+  id: '/serp',
+  path: '/serp',
+  getParentRoute: () => PProjectIdRouteRoute,
+} as any)
 const PProjectIdSavedRoute = PProjectIdSavedRouteImport.update({
   id: '/saved',
   path: '/saved',
+  getParentRoute: () => PProjectIdRouteRoute,
+} as any)
+const PProjectIdOpportunitiesRoute = PProjectIdOpportunitiesRouteImport.update({
+  id: '/opportunities',
+  path: '/opportunities',
   getParentRoute: () => PProjectIdRouteRoute,
 } as any)
 const PProjectIdMultilangRoute = PProjectIdMultilangRouteImport.update({
@@ -80,6 +99,11 @@ const PProjectIdDomainRoute = PProjectIdDomainRouteImport.update({
 const PProjectIdCompetitorsRoute = PProjectIdCompetitorsRouteImport.update({
   id: '/competitors',
   path: '/competitors',
+  getParentRoute: () => PProjectIdRouteRoute,
+} as any)
+const PProjectIdClustersRoute = PProjectIdClustersRouteImport.update({
+  id: '/clusters',
+  path: '/clusters',
   getParentRoute: () => PProjectIdRouteRoute,
 } as any)
 const PProjectIdCacheRoute = PProjectIdCacheRouteImport.update({
@@ -122,13 +146,17 @@ export interface FileRoutesByFullPath {
   '/p/$projectId/ai': typeof PProjectIdAiRoute
   '/p/$projectId/audit': typeof PProjectIdAuditRouteWithChildren
   '/p/$projectId/cache': typeof PProjectIdCacheRoute
+  '/p/$projectId/clusters': typeof PProjectIdClustersRoute
   '/p/$projectId/competitors': typeof PProjectIdCompetitorsRoute
   '/p/$projectId/domain': typeof PProjectIdDomainRoute
   '/p/$projectId/keywords': typeof PProjectIdKeywordsRoute
   '/p/$projectId/local': typeof PProjectIdLocalRoute
   '/p/$projectId/multilang': typeof PProjectIdMultilangRoute
+  '/p/$projectId/opportunities': typeof PProjectIdOpportunitiesRoute
   '/p/$projectId/saved': typeof PProjectIdSavedRoute
+  '/p/$projectId/serp': typeof PProjectIdSerpRoute
   '/p/$projectId/tracker': typeof PProjectIdTrackerRoute
+  '/p/$projectId/wordpress': typeof PProjectIdWordpressRoute
   '/p/$projectId/': typeof PProjectIdIndexRoute
   '/p/$projectId/audit/': typeof PProjectIdAuditIndexRoute
   '/p/$projectId/audit/issues/$resultId': typeof PProjectIdAuditIssuesResultIdRoute
@@ -139,13 +167,17 @@ export interface FileRoutesByTo {
   '/help/dataforseo-api-key': typeof HelpDataforseoApiKeyRoute
   '/p/$projectId/ai': typeof PProjectIdAiRoute
   '/p/$projectId/cache': typeof PProjectIdCacheRoute
+  '/p/$projectId/clusters': typeof PProjectIdClustersRoute
   '/p/$projectId/competitors': typeof PProjectIdCompetitorsRoute
   '/p/$projectId/domain': typeof PProjectIdDomainRoute
   '/p/$projectId/keywords': typeof PProjectIdKeywordsRoute
   '/p/$projectId/local': typeof PProjectIdLocalRoute
   '/p/$projectId/multilang': typeof PProjectIdMultilangRoute
+  '/p/$projectId/opportunities': typeof PProjectIdOpportunitiesRoute
   '/p/$projectId/saved': typeof PProjectIdSavedRoute
+  '/p/$projectId/serp': typeof PProjectIdSerpRoute
   '/p/$projectId/tracker': typeof PProjectIdTrackerRoute
+  '/p/$projectId/wordpress': typeof PProjectIdWordpressRoute
   '/p/$projectId': typeof PProjectIdIndexRoute
   '/p/$projectId/audit': typeof PProjectIdAuditIndexRoute
   '/p/$projectId/audit/issues/$resultId': typeof PProjectIdAuditIssuesResultIdRoute
@@ -159,13 +191,17 @@ export interface FileRoutesById {
   '/p/$projectId/ai': typeof PProjectIdAiRoute
   '/p/$projectId/audit': typeof PProjectIdAuditRouteWithChildren
   '/p/$projectId/cache': typeof PProjectIdCacheRoute
+  '/p/$projectId/clusters': typeof PProjectIdClustersRoute
   '/p/$projectId/competitors': typeof PProjectIdCompetitorsRoute
   '/p/$projectId/domain': typeof PProjectIdDomainRoute
   '/p/$projectId/keywords': typeof PProjectIdKeywordsRoute
   '/p/$projectId/local': typeof PProjectIdLocalRoute
   '/p/$projectId/multilang': typeof PProjectIdMultilangRoute
+  '/p/$projectId/opportunities': typeof PProjectIdOpportunitiesRoute
   '/p/$projectId/saved': typeof PProjectIdSavedRoute
+  '/p/$projectId/serp': typeof PProjectIdSerpRoute
   '/p/$projectId/tracker': typeof PProjectIdTrackerRoute
+  '/p/$projectId/wordpress': typeof PProjectIdWordpressRoute
   '/p/$projectId/': typeof PProjectIdIndexRoute
   '/p/$projectId/audit/': typeof PProjectIdAuditIndexRoute
   '/p/$projectId/audit/issues/$resultId': typeof PProjectIdAuditIssuesResultIdRoute
@@ -180,13 +216,17 @@ export interface FileRouteTypes {
     | '/p/$projectId/ai'
     | '/p/$projectId/audit'
     | '/p/$projectId/cache'
+    | '/p/$projectId/clusters'
     | '/p/$projectId/competitors'
     | '/p/$projectId/domain'
     | '/p/$projectId/keywords'
     | '/p/$projectId/local'
     | '/p/$projectId/multilang'
+    | '/p/$projectId/opportunities'
     | '/p/$projectId/saved'
+    | '/p/$projectId/serp'
     | '/p/$projectId/tracker'
+    | '/p/$projectId/wordpress'
     | '/p/$projectId/'
     | '/p/$projectId/audit/'
     | '/p/$projectId/audit/issues/$resultId'
@@ -197,13 +237,17 @@ export interface FileRouteTypes {
     | '/help/dataforseo-api-key'
     | '/p/$projectId/ai'
     | '/p/$projectId/cache'
+    | '/p/$projectId/clusters'
     | '/p/$projectId/competitors'
     | '/p/$projectId/domain'
     | '/p/$projectId/keywords'
     | '/p/$projectId/local'
     | '/p/$projectId/multilang'
+    | '/p/$projectId/opportunities'
     | '/p/$projectId/saved'
+    | '/p/$projectId/serp'
     | '/p/$projectId/tracker'
+    | '/p/$projectId/wordpress'
     | '/p/$projectId'
     | '/p/$projectId/audit'
     | '/p/$projectId/audit/issues/$resultId'
@@ -216,13 +260,17 @@ export interface FileRouteTypes {
     | '/p/$projectId/ai'
     | '/p/$projectId/audit'
     | '/p/$projectId/cache'
+    | '/p/$projectId/clusters'
     | '/p/$projectId/competitors'
     | '/p/$projectId/domain'
     | '/p/$projectId/keywords'
     | '/p/$projectId/local'
     | '/p/$projectId/multilang'
+    | '/p/$projectId/opportunities'
     | '/p/$projectId/saved'
+    | '/p/$projectId/serp'
     | '/p/$projectId/tracker'
+    | '/p/$projectId/wordpress'
     | '/p/$projectId/'
     | '/p/$projectId/audit/'
     | '/p/$projectId/audit/issues/$resultId'
@@ -265,6 +313,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PProjectIdIndexRouteImport
       parentRoute: typeof PProjectIdRouteRoute
     }
+    '/p/$projectId/wordpress': {
+      id: '/p/$projectId/wordpress'
+      path: '/wordpress'
+      fullPath: '/p/$projectId/wordpress'
+      preLoaderRoute: typeof PProjectIdWordpressRouteImport
+      parentRoute: typeof PProjectIdRouteRoute
+    }
     '/p/$projectId/tracker': {
       id: '/p/$projectId/tracker'
       path: '/tracker'
@@ -272,11 +327,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PProjectIdTrackerRouteImport
       parentRoute: typeof PProjectIdRouteRoute
     }
+    '/p/$projectId/serp': {
+      id: '/p/$projectId/serp'
+      path: '/serp'
+      fullPath: '/p/$projectId/serp'
+      preLoaderRoute: typeof PProjectIdSerpRouteImport
+      parentRoute: typeof PProjectIdRouteRoute
+    }
     '/p/$projectId/saved': {
       id: '/p/$projectId/saved'
       path: '/saved'
       fullPath: '/p/$projectId/saved'
       preLoaderRoute: typeof PProjectIdSavedRouteImport
+      parentRoute: typeof PProjectIdRouteRoute
+    }
+    '/p/$projectId/opportunities': {
+      id: '/p/$projectId/opportunities'
+      path: '/opportunities'
+      fullPath: '/p/$projectId/opportunities'
+      preLoaderRoute: typeof PProjectIdOpportunitiesRouteImport
       parentRoute: typeof PProjectIdRouteRoute
     }
     '/p/$projectId/multilang': {
@@ -312,6 +381,13 @@ declare module '@tanstack/react-router' {
       path: '/competitors'
       fullPath: '/p/$projectId/competitors'
       preLoaderRoute: typeof PProjectIdCompetitorsRouteImport
+      parentRoute: typeof PProjectIdRouteRoute
+    }
+    '/p/$projectId/clusters': {
+      id: '/p/$projectId/clusters'
+      path: '/clusters'
+      fullPath: '/p/$projectId/clusters'
+      preLoaderRoute: typeof PProjectIdClustersRouteImport
       parentRoute: typeof PProjectIdRouteRoute
     }
     '/p/$projectId/cache': {
@@ -377,13 +453,17 @@ interface PProjectIdRouteRouteChildren {
   PProjectIdAiRoute: typeof PProjectIdAiRoute
   PProjectIdAuditRoute: typeof PProjectIdAuditRouteWithChildren
   PProjectIdCacheRoute: typeof PProjectIdCacheRoute
+  PProjectIdClustersRoute: typeof PProjectIdClustersRoute
   PProjectIdCompetitorsRoute: typeof PProjectIdCompetitorsRoute
   PProjectIdDomainRoute: typeof PProjectIdDomainRoute
   PProjectIdKeywordsRoute: typeof PProjectIdKeywordsRoute
   PProjectIdLocalRoute: typeof PProjectIdLocalRoute
   PProjectIdMultilangRoute: typeof PProjectIdMultilangRoute
+  PProjectIdOpportunitiesRoute: typeof PProjectIdOpportunitiesRoute
   PProjectIdSavedRoute: typeof PProjectIdSavedRoute
+  PProjectIdSerpRoute: typeof PProjectIdSerpRoute
   PProjectIdTrackerRoute: typeof PProjectIdTrackerRoute
+  PProjectIdWordpressRoute: typeof PProjectIdWordpressRoute
   PProjectIdIndexRoute: typeof PProjectIdIndexRoute
   PProjectIdPsiIssuesResultIdRoute: typeof PProjectIdPsiIssuesResultIdRoute
 }
@@ -392,13 +472,17 @@ const PProjectIdRouteRouteChildren: PProjectIdRouteRouteChildren = {
   PProjectIdAiRoute: PProjectIdAiRoute,
   PProjectIdAuditRoute: PProjectIdAuditRouteWithChildren,
   PProjectIdCacheRoute: PProjectIdCacheRoute,
+  PProjectIdClustersRoute: PProjectIdClustersRoute,
   PProjectIdCompetitorsRoute: PProjectIdCompetitorsRoute,
   PProjectIdDomainRoute: PProjectIdDomainRoute,
   PProjectIdKeywordsRoute: PProjectIdKeywordsRoute,
   PProjectIdLocalRoute: PProjectIdLocalRoute,
   PProjectIdMultilangRoute: PProjectIdMultilangRoute,
+  PProjectIdOpportunitiesRoute: PProjectIdOpportunitiesRoute,
   PProjectIdSavedRoute: PProjectIdSavedRoute,
+  PProjectIdSerpRoute: PProjectIdSerpRoute,
   PProjectIdTrackerRoute: PProjectIdTrackerRoute,
+  PProjectIdWordpressRoute: PProjectIdWordpressRoute,
   PProjectIdIndexRoute: PProjectIdIndexRoute,
   PProjectIdPsiIssuesResultIdRoute: PProjectIdPsiIssuesResultIdRoute,
 }

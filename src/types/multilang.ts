@@ -136,3 +136,13 @@ export interface MultilangDB {
   fichas: MultilangFicha[];
   categories: MultilangCategory[];
 }
+
+/** Resultado de búsqueda en Google Places */
+export interface PlaceSearchResult {
+  placeId: string;
+  name: string;
+  address: string;
+  mapsUrl: string;
+  rating: number | null;
+  totalReviews: number | null;
+}

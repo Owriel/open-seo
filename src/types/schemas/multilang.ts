@@ -54,3 +54,14 @@ export const assignCategorySchema = z.object({
   fichaId: z.string().min(1),
   categoryId: z.string().nullable(),
 });
+
+/** Schema para buscar fichas en Google Places */
+export const searchPlacesSchema = z.object({
+  query: z.string().min(2),
+});
+
+/** Schema para eliminar fichas en bulk */
+export const deleteFichasBulkSchema = z.object({
+  projectId: z.string().min(1),
+  fichaIds: z.array(z.string().min(1)).min(1),
+});

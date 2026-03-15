@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import {
   Languages,
@@ -19,6 +19,9 @@ import {
   FolderPlus,
   Eye,
   Sparkles,
+  ExternalLink,
+  Star,
+  ChevronRight,
 } from "lucide-react";
 import {
   getMultilangData,
@@ -30,12 +33,15 @@ import {
   updateCategory,
   deleteCategory,
   assignCategory,
+  searchPlacesAction,
+  deleteFichasBulk,
 } from "@/serverFunctions/multilang";
 import type {
   MultilangDB,
   MultilangFicha,
   MultilangCategory,
   MultilangVariant,
+  PlaceSearchResult,
 } from "@/types/multilang";
 
 export const Route = createFileRoute("/p/$projectId/multilang")({
@@ -77,17 +83,31 @@ function MultilangPage() {
 
   // Filtros
   const [searchText, setSearchText] = useState("");
-  const [filterStatus, setFilterStatus] = useState<"all" | "multi" | "nomulti" | "pending">("all");
+  const [filterStatus, setFilterStatus] = useState<"all" | "multi" | "nomulti" | "pending" | "error">("all");
   const [filterCatId, setFilterCatId] = useState("");
 
   // Categorías UI
   const [editingCatId, setEditingCatId] = useState<string | null>(null);
-  const [newCatName, setNewCatName] = useState("");
   const [newKeyword, setNewKeyword] = useState("");
+
+  // Modal categoría
+  const [showCatModal, setShowCatModal] = useState(false);
+  const [catModalName, setCatModalName] = useState("");
+  const [catModalKeywords, setCatModalKeywords] = useState("");
 
   // Cards expandidas
   const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
   const [expandedLangTables, setExpandedLangTables] = useState<Set<string>>(new Set());
+
+  // Bulk select
+  const [selectedFichas, setSelectedFichas] = useState<Set<string>>(new Set());
+
+  // Buscador de Google Places
+  const [placesQuery, setPlacesQuery] = useState("");
+  const [placesResults, setPlacesResults] = useState<PlaceSearchResult[]>([]);
+  const [placesSearching, setPlacesSearching] = useState(false);
+  const [showBulkImport, setShowBulkImport] = useState(false);
+  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ── Carga inicial ──
   const loadData = useCallback(async () => {
@@ -100,20 +120,55 @@ function MultilangPage() {
     }
   }, [projectId]);
 
-  // Cargar al montar
   useEffect(() => {
     loadData();
   }, [loadData]);
 
+  // ── Buscador de Google Places ──
+
+  const handlePlacesSearch = async (query?: string) => {
+    const q = query ?? placesQuery;
+    if (q.trim().length < 2) return;
+    setPlacesSearching(true);
+    try {
+      const results = await searchPlacesAction({ data: { query: q.trim() } });
+      setPlacesResults(results);
+    } catch (err) {
+      toast.error("Error en búsqueda: " + (err instanceof Error ? err.message : "Error"));
+    }
+    setPlacesSearching(false);
+  };
+
+  const handlePlacesKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handlePlacesSearch();
+    }
+  };
+
+  const handleAddFromPlaces = async (place: PlaceSearchResult) => {
+    try {
+      const result = await addFichas({
+        data: { projectId, entries: [{ input: place.name }] },
+      });
+      if (result.added > 0) {
+        toast.success(`"${place.name}" añadida`);
+        // Quitar de resultados
+        setPlacesResults((prev) => prev.filter((p) => p.placeId !== place.placeId));
+        await loadData();
+      } else {
+        toast.info("Esa ficha ya existe");
+      }
+    } catch (err) {
+      toast.error("Error: " + (err instanceof Error ? err.message : "Error"));
+    }
+  };
+
   // ── Acciones ──
 
   const handleAddBulk = async () => {
-    const lines = bulkInput
-      .split("\n")
-      .map((l) => l.trim())
-      .filter((l) => l);
+    const lines = bulkInput.split("\n").map((l) => l.trim()).filter((l) => l);
     if (lines.length === 0) return;
-
     try {
       const result = await addFichas({
         data: { projectId, entries: lines.map((l) => ({ input: l })) },
@@ -156,7 +211,6 @@ function MultilangPage() {
         const result = await analyzeSingleFicha({
           data: { projectId, fichaId: ficha.id },
         });
-        // Actualizar la ficha en el state local
         setDb((prev) => ({
           ...prev,
           fichas: prev.fichas.map((f) => (f.id === result.id ? result : f)),
@@ -198,6 +252,7 @@ function MultilangPage() {
     if (!confirm("¿Eliminar esta ficha?")) return;
     await deleteFicha({ data: { projectId, fichaId } });
     setDb((prev) => ({ ...prev, fichas: prev.fichas.filter((f) => f.id !== fichaId) }));
+    setSelectedFichas((prev) => { const n = new Set(prev); n.delete(fichaId); return n; });
     toast.success("Ficha eliminada");
   };
 
@@ -205,8 +260,52 @@ function MultilangPage() {
     if (!confirm("¿Eliminar TODAS las fichas?")) return;
     await deleteAllFichas({ data: { projectId } });
     setDb((prev) => ({ ...prev, fichas: [] }));
+    setSelectedFichas(new Set());
     toast.success("Todas las fichas eliminadas");
   };
+
+  // ── Acciones bulk ──
+
+  const handleBulkAnalyze = async () => {
+    const fichas = db.fichas.filter((f) => selectedFichas.has(f.id));
+    if (fichas.length === 0) return;
+    await runAnalysis(fichas);
+    setSelectedFichas(new Set());
+  };
+
+  const handleBulkDelete = async () => {
+    if (!confirm(`¿Eliminar ${selectedFichas.size} fichas seleccionadas?`)) return;
+    try {
+      await deleteFichasBulk({ data: { projectId, fichaIds: Array.from(selectedFichas) } });
+      setDb((prev) => ({
+        ...prev,
+        fichas: prev.fichas.filter((f) => !selectedFichas.has(f.id)),
+      }));
+      setSelectedFichas(new Set());
+      toast.success("Fichas eliminadas");
+    } catch (err) {
+      toast.error("Error: " + (err instanceof Error ? err.message : "Error"));
+    }
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelectedFichas((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedFichas.size === filteredFichas.length) {
+      setSelectedFichas(new Set());
+    } else {
+      setSelectedFichas(new Set(filteredFichas.map((f) => f.id)));
+    }
+  };
+
+  // ── CSV ──
 
   const handleExportCSV = () => {
     const analyzed = db.fichas.filter((f) => f.status === "analyzed");
@@ -249,12 +348,20 @@ function MultilangPage() {
 
   // ── Categorías ──
 
-  const handleCreateCategory = async () => {
-    if (!newCatName.trim()) return;
+  const handleCreateCategoryModal = async () => {
+    if (!catModalName.trim()) return;
     try {
-      const cat = await createCategory({ data: { projectId, name: newCatName.trim() } });
+      const cat = await createCategory({ data: { projectId, name: catModalName.trim() } });
+      // Si hay keywords, actualizar inmediatamente
+      const keywords = catModalKeywords.split("\n").map((l) => l.trim()).filter((l) => l);
+      if (keywords.length > 0) {
+        await updateCategory({ data: { projectId, categoryId: cat.id, keywords } });
+        cat.keywords = keywords;
+      }
       setDb((prev) => ({ ...prev, categories: [...prev.categories, cat] }));
-      setNewCatName("");
+      setCatModalName("");
+      setCatModalKeywords("");
+      setShowCatModal(false);
       toast.success(`Categoría "${cat.name}" creada`);
     } catch (err) {
       toast.error("Error: " + (err instanceof Error ? err.message : "Error"));
@@ -317,7 +424,8 @@ function MultilangPage() {
       if (filterCatId && f.categoryId !== filterCatId) return false;
       if (filterStatus === "multi") return f.variants && f.variants.length > 0;
       if (filterStatus === "nomulti") return f.status === "analyzed" && (!f.variants || f.variants.length === 0);
-      if (filterStatus === "pending") return f.status === "pending" || f.status === "error";
+      if (filterStatus === "pending") return f.status === "pending";
+      if (filterStatus === "error") return f.status === "error";
       return true;
     });
   }, [db.fichas, searchText, filterCatId, filterStatus]);
@@ -325,12 +433,13 @@ function MultilangPage() {
   // ── Stats ──
   const stats = useMemo(() => {
     const total = db.fichas.length;
+    const analyzed = db.fichas.filter((f) => f.status === "analyzed").length;
     const multi = db.fichas.filter((f) => f.variants && f.variants.length > 0).length;
     const nomulti = db.fichas.filter((f) => f.status === "analyzed" && (!f.variants || f.variants.length === 0)).length;
     const pending = db.fichas.filter((f) => f.status === "pending").length;
     const errors = db.fichas.filter((f) => f.status === "error").length;
     const totalVariants = db.fichas.reduce((s, f) => s + (f.variants ? f.variants.length : 0), 0);
-    return { total, multi, nomulti, pending, errors, totalVariants };
+    return { total, analyzed, multi, nomulti, pending, errors, totalVariants };
   }, [db.fichas]);
 
   // ── Descubrimientos recientes ──
@@ -349,8 +458,11 @@ function MultilangPage() {
       }
     }
     discs.sort((a, b) => b.discoveredAt.localeCompare(a.discoveredAt));
-    return discs.slice(0, 20);
+    return discs;
   }, [db.fichas]);
+
+  const [showAllDiscoveries, setShowAllDiscoveries] = useState(false);
+  const visibleDiscoveries = showAllDiscoveries ? discoveries : discoveries.slice(0, 10);
 
   // ── Toggle helpers ──
   const toggleCard = (id: string) => {
@@ -382,50 +494,164 @@ function MultilangPage() {
   return (
     <div className="space-y-6 p-4 md:p-6">
       {/* Header */}
-      <div className="text-center">
-        <h1 className="text-2xl font-bold flex items-center justify-center gap-2">
+      <div>
+        <h1 className="text-2xl font-bold flex items-center gap-2">
           <Languages className="size-7 text-primary" />
           Revisor Multidioma
         </h1>
         <p className="text-base-content/60 text-sm mt-1">
-          Analiza los nombres multiidioma de tus fichas de Google Business Profile
+          Analiza y trackea los nombres multidioma de tus fichas GBP
         </p>
       </div>
 
-      {/* Panel de entrada */}
+      {/* Stats */}
+      {stats.total > 0 && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <StatCard label="Total fichas" value={stats.total} color="text-primary" />
+          <StatCard label="Analizadas" value={stats.analyzed} color="text-success" />
+          <StatCard label="Pendientes" value={stats.pending} color="text-warning" />
+          <StatCard label="Multi-idiomas" value={stats.totalVariants} color="text-secondary" />
+        </div>
+      )}
+
+      {/* Descubrimientos recientes — prominente */}
+      {discoveries.length > 0 && (
+        <div className="card bg-success/5 border-2 border-success/40 shadow-sm">
+          <div className="card-body py-4">
+            <h2 className="card-title text-sm text-success">
+              <Sparkles className="size-5" /> Últimos multiidiomas descubiertos
+            </h2>
+            <div className="space-y-1.5">
+              {visibleDiscoveries.map((d, i) => (
+                <div key={i} className="flex items-start justify-between gap-2 text-sm">
+                  <div>
+                    <span className="text-success font-medium">+</span>{" "}
+                    <span className="font-semibold">{d.fichaName}</span>
+                    {" — "}
+                    <span className="text-success">&ldquo;{d.variantName}&rdquo;</span>{" "}
+                    <span className="text-base-content/50">
+                      ({d.languages.map((l) => l.code).join(", ")})
+                    </span>
+                  </div>
+                  <span className="text-xs text-base-content/50 whitespace-nowrap">
+                    {new Date(d.discoveredAt).toLocaleDateString("es-ES")}
+                  </span>
+                </div>
+              ))}
+            </div>
+            {discoveries.length > 10 && (
+              <button
+                className="btn btn-ghost btn-xs text-success mt-1"
+                onClick={() => setShowAllDiscoveries(!showAllDiscoveries)}
+              >
+                {showAllDiscoveries ? "Ver menos" : `Ver todos (${discoveries.length})`}
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Buscador de Google Places */}
       <div className="card bg-base-200 shadow-sm">
         <div className="card-body">
           <h2 className="card-title text-sm text-primary">
-            <Plus className="size-4" /> Agregar fichas
+            <Search className="size-4" /> Buscar y añadir fichas
           </h2>
-          <textarea
-            className="textarea textarea-bordered w-full min-h-28 font-mono text-sm"
-            placeholder={"Pega aquí las URLs o nombres de fichas, uno por línea. Ejemplos:\n\nhttps://www.google.com/maps?cid=17326773546932756904\nhttps://maps.app.goo.gl/t6pRKgfs2ZQ9PE38A\nArquitectos y Reformas Reus"}
-            value={bulkInput}
-            onChange={(e) => setBulkInput(e.target.value)}
-          />
-          <p className="text-xs text-base-content/50">
-            Acepta URLs de Google Maps (?cid=, maps.app.goo.gl, URL larga) o nombres exactos de fichas. Uno por línea.
-          </p>
-          <div className="flex flex-wrap gap-2 mt-2">
-            <button className="btn btn-primary btn-sm" onClick={handleAddBulk} disabled={!bulkInput.trim()}>
-              <Plus className="size-4" /> Agregar
-            </button>
-            <button className="btn btn-success btn-sm" onClick={handleAnalyzePending} disabled={analyzing}>
-              {analyzing ? <Loader2 className="size-4 animate-spin" /> : <Search className="size-4" />}
-              Analizar pendientes
-            </button>
-            <button className="btn btn-outline btn-sm" onClick={handleRefreshAll} disabled={analyzing}>
-              <RefreshCw className="size-4" /> Actualizar todas
-            </button>
-            <button className="btn btn-outline btn-sm" onClick={handleExportCSV}>
-              <FileDown className="size-4" /> Exportar CSV
-            </button>
-            <button className="btn btn-error btn-outline btn-sm" onClick={handleDeleteAll} disabled={db.fichas.length === 0}>
-              <Trash2 className="size-4" /> Borrar todo
-            </button>
+          <div className="relative">
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <input
+                  type="text"
+                  className="input input-bordered w-full pl-10"
+                  placeholder="Busca tu negocio en Google Maps... ej: Reformas en Valencia"
+                  value={placesQuery}
+                  onChange={(e) => setPlacesQuery(e.target.value)}
+                  onKeyDown={handlePlacesKeyDown}
+                />
+                <Search className="size-4 absolute left-3 top-1/2 -translate-y-1/2 text-base-content/40" />
+                {placesSearching && (
+                  <Loader2 className="size-4 absolute right-3 top-1/2 -translate-y-1/2 animate-spin text-primary" />
+                )}
+              </div>
+              <button
+                className="btn btn-primary"
+                onClick={() => handlePlacesSearch()}
+                disabled={placesSearching || placesQuery.trim().length < 2}
+              >
+                Buscar
+              </button>
+            </div>
+
+            {/* Resultados de búsqueda */}
+            {placesResults.length > 0 && (
+              <div className="mt-2 border border-base-300 rounded-lg overflow-hidden divide-y divide-base-300">
+                {placesResults.map((place) => (
+                  <div key={place.placeId} className="flex items-center justify-between px-4 py-3 hover:bg-base-300/50">
+                    <div className="min-w-0 flex-1">
+                      <div className="font-semibold text-sm truncate">{place.name}</div>
+                      <div className="text-xs text-base-content/50 truncate">{place.address}</div>
+                      {(place.rating || place.totalReviews) && (
+                        <div className="flex items-center gap-2 mt-0.5">
+                          {place.rating && (
+                            <span className="flex items-center gap-0.5 text-xs">
+                              <Star className="size-3 fill-warning text-warning" />
+                              {place.rating}
+                            </span>
+                          )}
+                          {place.totalReviews != null && (
+                            <span className="text-xs text-base-content/50">{place.totalReviews} reseñas</span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    <button
+                      className="btn btn-ghost btn-sm text-primary ml-3"
+                      onClick={() => handleAddFromPlaces(place)}
+                    >
+                      <Plus className="size-4" /> Añadir
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
+
+          {/* Importar manualmente (colapsable) */}
+          <button
+            className="btn btn-ghost btn-xs text-base-content/60 self-start mt-1"
+            onClick={() => setShowBulkImport(!showBulkImport)}
+          >
+            <ChevronRight className={`size-3 transition-transform ${showBulkImport ? "rotate-90" : ""}`} />
+            Importar manualmente (URLs/nombres)
+          </button>
+          {showBulkImport && (
+            <div className="mt-2">
+              <textarea
+                className="textarea textarea-bordered w-full min-h-24 font-mono text-sm"
+                placeholder={"Pega URLs o nombres, uno por línea:\nhttps://www.google.com/maps?cid=...\nhttps://maps.app.goo.gl/...\nNombre del Negocio"}
+                value={bulkInput}
+                onChange={(e) => setBulkInput(e.target.value)}
+              />
+              <button className="btn btn-primary btn-sm mt-2" onClick={handleAddBulk} disabled={!bulkInput.trim()}>
+                <Plus className="size-4" /> Agregar
+              </button>
+            </div>
+          )}
         </div>
+      </div>
+
+      {/* Barra de acciones */}
+      <div className="flex flex-wrap gap-2">
+        <button className="btn btn-success btn-sm" onClick={handleAnalyzePending} disabled={analyzing}>
+          {analyzing ? <Loader2 className="size-4 animate-spin" /> : <Search className="size-4" />}
+          Analizar pendientes ({stats.pending})
+        </button>
+        <button className="btn btn-outline btn-sm" onClick={handleRefreshAll} disabled={analyzing}>
+          <RefreshCw className="size-4" /> Actualizar todas
+        </button>
+        <button className="btn btn-outline btn-sm" onClick={handleExportCSV}>
+          <FileDown className="size-4" /> Exportar
+        </button>
       </div>
 
       {/* Barra de progreso */}
@@ -450,43 +676,22 @@ function MultilangPage() {
         </div>
       )}
 
-      {/* Descubrimientos recientes */}
-      {discoveries.length > 0 && (
-        <div className="card bg-base-200 border border-success/30 shadow-sm">
-          <div className="card-body">
-            <h2 className="card-title text-sm text-success">
-              <Sparkles className="size-4" /> Últimos multiidiomas descubiertos
-            </h2>
-            <div className="space-y-2 max-h-48 overflow-y-auto">
-              {discoveries.map((d, i) => (
-                <div key={i} className="flex items-center justify-between gap-2 text-sm border-l-2 border-success pl-3 py-1">
-                  <div>
-                    <span className="font-semibold text-success">{d.variantName}</span>{" "}
-                    <span className="text-base-content/60">
-                      en {d.fichaName} — {d.languages.map((l) => l.code).join(", ")}
-                    </span>
-                  </div>
-                  <span className="text-xs text-base-content/50 whitespace-nowrap">
-                    {new Date(d.discoveredAt).toLocaleDateString("es-ES")}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Panel de categorías */}
       <div className="card bg-base-200 shadow-sm">
         <div className="card-body">
-          <h2 className="card-title text-sm text-secondary">
-            <Tag className="size-4" /> Categorías y Keywords
-          </h2>
+          <div className="flex items-center justify-between">
+            <h2 className="card-title text-sm text-secondary">
+              <Tag className="size-4" /> Categorías
+            </h2>
+            <button className="btn btn-ghost btn-sm text-primary" onClick={() => setShowCatModal(true)}>
+              <FolderPlus className="size-4" /> Nueva categoría
+            </button>
+          </div>
 
           {/* Chips de categorías */}
           <div className="flex flex-wrap gap-2">
             {db.categories.length === 0 && (
-              <span className="text-sm text-base-content/50">No hay categorías. Crea una para asignar keywords a tus fichas.</span>
+              <span className="text-sm text-base-content/50">No hay categorías. Crea una para asignar keywords objetivo a tus fichas.</span>
             )}
             {db.categories.map((cat) => {
               const count = db.fichas.filter((f) => f.categoryId === cat.id).length;
@@ -500,10 +705,7 @@ function MultilangPage() {
                   <span className="badge badge-sm badge-secondary">{count}</span>
                   <span
                     className="text-error hover:text-error/70 ml-1"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDeleteCategory(cat.id);
-                    }}
+                    onClick={(e) => { e.stopPropagation(); handleDeleteCategory(cat.id); }}
                   >
                     <X className="size-3" />
                   </span>
@@ -545,95 +747,167 @@ function MultilangPage() {
               </div>
             );
           })()}
+        </div>
+      </div>
 
-          {/* Crear nueva categoría */}
-          <div className="flex gap-2 mt-2">
-            <input
-              className="input input-bordered input-sm flex-1"
-              placeholder="Nueva categoría..."
-              value={newCatName}
-              onChange={(e) => setNewCatName(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") handleCreateCategory(); }}
-            />
-            <button className="btn btn-outline btn-sm" onClick={handleCreateCategory}>
-              <FolderPlus className="size-4" /> Crear
+      {/* Tabs de filtro + búsqueda */}
+      {stats.total > 0 && (
+        <div className="space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-1">
+              {(
+                [
+                  { key: "all", label: "Todas", count: stats.total },
+                  { key: "multi", label: "Con multiidioma", count: stats.multi },
+                  { key: "nomulti", label: "Sin multiidioma", count: stats.nomulti },
+                  { key: "pending", label: "Pendientes", count: stats.pending },
+                  { key: "error", label: "Errores", count: stats.errors },
+                ] as const
+              ).map((tab) => (
+                <button
+                  key={tab.key}
+                  className={`tab tab-sm tab-bordered ${filterStatus === tab.key ? "tab-active" : ""}`}
+                  onClick={() => setFilterStatus(tab.key)}
+                >
+                  {tab.label} ({tab.count})
+                </button>
+              ))}
+            </div>
+            <button
+              className="btn btn-error btn-outline btn-xs"
+              onClick={handleDeleteAll}
+              disabled={db.fichas.length === 0}
+            >
+              <Trash2 className="size-3" /> Borrar todas
             </button>
           </div>
-        </div>
-      </div>
 
-      {/* Stats */}
-      {stats.total > 0 && (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-          <StatCard label="Fichas" value={stats.total} color="text-primary" />
-          <StatCard label="Con multiidioma" value={stats.multi} color="text-success" />
-          <StatCard label="Sin multiidioma" value={stats.nomulti} color="text-warning" />
-          <StatCard label="Multi-idiomas total" value={stats.totalVariants} color="text-secondary" />
-          <StatCard label="Pendientes" value={stats.pending} color="text-base-content/60" />
-          {stats.errors > 0 && <StatCard label="Errores" value={stats.errors} color="text-error" />}
-        </div>
-      )}
-
-      {/* Filtros */}
-      {stats.total > 0 && (
-        <div className="flex flex-wrap gap-2 items-center">
-          <input
-            type="text"
-            className="input input-bordered input-sm flex-1 min-w-40"
-            placeholder="Buscar..."
-            value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
-          />
-          <select
-            className="select select-bordered select-sm"
-            value={filterCatId}
-            onChange={(e) => setFilterCatId(e.target.value)}
-          >
-            <option value="">Todas las categorías</option>
-            {db.categories.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name} ({db.fichas.filter((f) => f.categoryId === c.id).length})
-              </option>
-            ))}
-          </select>
-          {(["all", "multi", "nomulti", "pending"] as const).map((f) => (
-            <button
-              key={f}
-              className={`btn btn-sm ${filterStatus === f ? "btn-primary" : "btn-outline"}`}
-              onClick={() => setFilterStatus(f)}
+          <div className="flex flex-wrap gap-2">
+            <input
+              type="text"
+              className="input input-bordered input-sm flex-1 min-w-40"
+              placeholder="Buscar ficha..."
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+            />
+            <select
+              className="select select-bordered select-sm"
+              value={filterCatId}
+              onChange={(e) => setFilterCatId(e.target.value)}
             >
-              {f === "all" ? "Todas" : f === "multi" ? "Con multiidioma" : f === "nomulti" ? "Sin multiidioma" : "Pendientes"}
-            </button>
-          ))}
+              <option value="">Todas las categorías</option>
+              {db.categories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name} ({db.fichas.filter((f) => f.categoryId === c.id).length})
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       )}
 
-      {/* Cards de fichas */}
-      <div className="space-y-3">
-        {filteredFichas.map((ficha) => (
-          <FichaCard
-            key={ficha.id}
-            ficha={ficha}
-            categories={db.categories}
-            expanded={expandedCards.has(ficha.id)}
-            langTableExpanded={expandedLangTables.has(ficha.id)}
-            onToggle={() => toggleCard(ficha.id)}
-            onToggleLangTable={() => toggleLangTable(ficha.id)}
-            onAnalyze={() => handleAnalyzeOne(ficha.id)}
-            onDelete={() => handleDeleteOne(ficha.id)}
-            onAssignCategory={(catId) => handleAssignCategory(ficha.id, catId)}
-            analyzing={analyzing}
-          />
-        ))}
-        {filteredFichas.length === 0 && stats.total > 0 && (
-          <p className="text-center text-base-content/50 py-8">No hay fichas que coincidan con los filtros</p>
-        )}
-        {stats.total === 0 && (
-          <p className="text-center text-base-content/50 py-8">
-            Añade fichas de Google Business Profile arriba para empezar
-          </p>
-        )}
-      </div>
+      {/* Barra de acciones bulk */}
+      {selectedFichas.size > 0 && (
+        <div className="flex items-center gap-3 bg-primary/10 rounded-lg px-4 py-2">
+          <span className="text-sm font-medium">{selectedFichas.size} seleccionadas</span>
+          <button className="btn btn-success btn-xs" onClick={handleBulkAnalyze} disabled={analyzing}>
+            <RefreshCw className="size-3" /> Analizar
+          </button>
+          <button className="btn btn-error btn-xs" onClick={handleBulkDelete}>
+            <Trash2 className="size-3" /> Borrar
+          </button>
+          <button className="btn btn-ghost btn-xs" onClick={() => setSelectedFichas(new Set())}>
+            Deseleccionar
+          </button>
+        </div>
+      )}
+
+      {/* Lista de fichas — layout compacto */}
+      {stats.total > 0 && (
+        <div className="bg-base-200 rounded-lg overflow-hidden">
+          {/* Cabecera con seleccionar todas */}
+          <div className="flex items-center gap-3 px-4 py-2 border-b border-base-300 text-xs text-base-content/50">
+            <input
+              type="checkbox"
+              className="checkbox checkbox-xs"
+              checked={filteredFichas.length > 0 && selectedFichas.size === filteredFichas.length}
+              onChange={toggleSelectAll}
+            />
+            <span>Seleccionar todas</span>
+          </div>
+
+          {/* Filas de fichas */}
+          {filteredFichas.map((ficha) => (
+            <FichaRow
+              key={ficha.id}
+              ficha={ficha}
+              categories={db.categories}
+              expanded={expandedCards.has(ficha.id)}
+              langTableExpanded={expandedLangTables.has(ficha.id)}
+              selected={selectedFichas.has(ficha.id)}
+              onToggle={() => toggleCard(ficha.id)}
+              onToggleLangTable={() => toggleLangTable(ficha.id)}
+              onToggleSelect={() => toggleSelect(ficha.id)}
+              onAnalyze={() => handleAnalyzeOne(ficha.id)}
+              onDelete={() => handleDeleteOne(ficha.id)}
+              onAssignCategory={(catId) => handleAssignCategory(ficha.id, catId)}
+              analyzing={analyzing}
+            />
+          ))}
+
+          {filteredFichas.length === 0 && (
+            <p className="text-center text-base-content/50 py-8">No hay fichas que coincidan con los filtros</p>
+          )}
+        </div>
+      )}
+
+      {stats.total === 0 && (
+        <div className="bg-base-200 rounded-lg py-12 text-center">
+          <p className="text-base-content/50">No hay fichas</p>
+          <p className="text-base-content/40 text-sm">Busca tu negocio arriba para empezar</p>
+        </div>
+      )}
+
+      {/* Modal de nueva categoría */}
+      {showCatModal && (
+        <div className="modal modal-open">
+          <div className="modal-box">
+            <h3 className="font-bold text-lg">Nueva categoría</h3>
+            <div className="mt-4 space-y-4">
+              <div>
+                <label className="label"><span className="label-text">Nombre</span></label>
+                <input
+                  type="text"
+                  className="input input-bordered w-full"
+                  placeholder="Ej: Reformas"
+                  value={catModalName}
+                  onChange={(e) => setCatModalName(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") handleCreateCategoryModal(); }}
+                  autoFocus
+                />
+              </div>
+              <div>
+                <label className="label"><span className="label-text">Keywords objetivo (una por línea, en español)</span></label>
+                <textarea
+                  className="textarea textarea-bordered w-full min-h-28"
+                  placeholder={"reforma cocina\nreforma baño\nreformas integrales"}
+                  value={catModalKeywords}
+                  onChange={(e) => setCatModalKeywords(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="modal-action">
+              <button className="btn" onClick={() => { setShowCatModal(false); setCatModalName(""); setCatModalKeywords(""); }}>
+                Cancelar
+              </button>
+              <button className="btn btn-primary" onClick={handleCreateCategoryModal} disabled={!catModalName.trim()}>
+                Crear
+              </button>
+            </div>
+          </div>
+          <div className="modal-backdrop" onClick={() => setShowCatModal(false)} />
+        </div>
+      )}
     </div>
   );
 }
@@ -653,13 +927,16 @@ function StatCard({ label, value, color }: { label: string; value: number; color
   );
 }
 
-function FichaCard({
+/** Fila compacta de ficha (layout tipo lista) */
+function FichaRow({
   ficha,
   categories,
   expanded,
   langTableExpanded,
+  selected,
   onToggle,
   onToggleLangTable,
+  onToggleSelect,
   onAnalyze,
   onDelete,
   onAssignCategory,
@@ -669,8 +946,10 @@ function FichaCard({
   categories: MultilangCategory[];
   expanded: boolean;
   langTableExpanded: boolean;
+  selected: boolean;
   onToggle: () => void;
   onToggleLangTable: () => void;
+  onToggleSelect: () => void;
   onAnalyze: () => void;
   onDelete: () => void;
   onAssignCategory: (catId: string | null) => void;
@@ -680,82 +959,107 @@ function FichaCard({
   const hasMul = ficha.variants && ficha.variants.length > 0;
   const status = ficha.status || "pending";
 
-  // Color de borde izquierdo según estado
-  const borderClass =
+  // Dot de color según estado
+  const dotColor =
     status === "analyzed"
-      ? hasMul
-        ? "border-l-4 border-l-success"
-        : "border-l-4 border-l-warning"
-      : status === "analyzing"
-        ? "border-l-4 border-l-primary"
-        : status === "error"
-          ? "border-l-4 border-l-error"
-          : "border-l-4 border-l-base-content/30";
+      ? hasMul ? "bg-success" : "bg-warning"
+      : status === "analyzing" ? "bg-primary animate-pulse"
+      : status === "error" ? "bg-error"
+      : "bg-base-content/30";
 
-  // Badge de estado
-  const statusBadge =
-    status === "pending" ? (
-      <span className="badge badge-sm badge-ghost"><Clock className="size-3 mr-1" />Pendiente</span>
-    ) : status === "analyzing" ? (
-      <span className="badge badge-sm badge-info"><Loader2 className="size-3 mr-1 animate-spin" />Analizando...</span>
-    ) : status === "error" ? (
-      <span className="badge badge-sm badge-error"><AlertCircle className="size-3 mr-1" />Error</span>
-    ) : hasMul ? (
-      <span className="badge badge-sm badge-success"><CheckCircle2 className="size-3 mr-1" />{ficha.variants.length} Multi-idioma</span>
-    ) : (
-      <span className="badge badge-sm badge-warning">Solo 1 nombre</span>
-    );
+  // Stats inline
+  const statsText = status === "analyzed"
+    ? `${ficha.variants?.length || 0} multi-idiomas · ${ficha.totalLanguagesChecked} idiomas${ficha.lastAnalyzed ? ` · ${new Date(ficha.lastAnalyzed).toLocaleDateString("es-ES")}` : ""}`
+    : status === "error" ? "Error"
+    : "Pendiente";
 
-  // Badge de categoría
   const cat = categories.find((c) => c.id === ficha.categoryId);
 
   return (
-    <div className={`card bg-base-200 shadow-sm ${borderClass}`}>
-      {/* Cabecera clickable */}
-      <div className="flex items-center justify-between px-5 py-3 cursor-pointer hover:bg-base-300/50 transition-colors" onClick={onToggle}>
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="font-semibold">{name}</span>
-          {statusBadge}
-          {cat && <span className="badge badge-sm badge-secondary badge-outline">{cat.name}</span>}
-          {/* Badge de keyword completion */}
-          {cat && status === "analyzed" && cat.keywords.length > 0 && (() => {
-            const ks = computeKeywordStatus(ficha, cat);
-            const pct = Math.round((ks.found.length / cat.keywords.length) * 100);
-            const cl = pct === 100 ? "badge-success" : pct >= 50 ? "badge-warning" : "badge-error";
-            return (
-              <span className={`badge badge-sm ${cl} badge-outline`}>
-                {ks.found.length}/{cat.keywords.length} kw
-              </span>
-            );
-          })()}
+    <div className="border-b border-base-300 last:border-b-0">
+      {/* Fila compacta */}
+      <div className="flex items-center gap-3 px-4 py-2.5 hover:bg-base-300/50 transition-colors">
+        {/* Checkbox */}
+        <input
+          type="checkbox"
+          className="checkbox checkbox-xs"
+          checked={selected}
+          onChange={onToggleSelect}
+        />
+
+        {/* Dot de estado */}
+        <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${dotColor}`} />
+
+        {/* Nombre + stats (clickable para expandir) */}
+        <div className="flex-1 min-w-0 cursor-pointer" onClick={onToggle}>
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-semibold text-sm truncate">{name}</span>
+            {cat && <span className="badge badge-xs badge-secondary badge-outline">{cat.name}</span>}
+            {cat && status === "analyzed" && cat.keywords.length > 0 && (() => {
+              const ks = computeKeywordStatus(ficha, cat);
+              const pct = Math.round((ks.found.length / cat.keywords.length) * 100);
+              const cl = pct === 100 ? "badge-success" : pct >= 50 ? "badge-warning" : "badge-error";
+              return <span className={`badge badge-xs ${cl} badge-outline`}>{ks.found.length}/{cat.keywords.length} kw</span>;
+            })()}
+          </div>
+          <div className="text-xs text-base-content/50">{statsText}</div>
         </div>
-        <div className="flex items-center gap-3">
-          {ficha.totalLanguagesChecked > 0 && (
-            <span className="text-xs text-base-content/50">
-              {ficha.totalLanguagesChecked} idiomas
-              {ficha.lastAnalyzed && ` · ${new Date(ficha.lastAnalyzed).toLocaleDateString("es-ES")}`}
-            </span>
+
+        {/* Iconos de acción */}
+        <div className="flex items-center gap-1">
+          <button
+            className="btn btn-ghost btn-xs btn-square"
+            title="Analizar"
+            onClick={(e) => { e.stopPropagation(); onAnalyze(); }}
+            disabled={analyzing}
+          >
+            <RefreshCw className="size-3.5" />
+          </button>
+          {ficha.url && (
+            <a
+              href={ficha.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn btn-ghost btn-xs btn-square"
+              title="Ver en Maps"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <ExternalLink className="size-3.5" />
+            </a>
           )}
-          {expanded ? <ChevronUp className="size-4 text-base-content/50" /> : <ChevronDown className="size-4 text-base-content/50" />}
+          <button
+            className="btn btn-ghost btn-xs btn-square text-error"
+            title="Eliminar"
+            onClick={(e) => { e.stopPropagation(); onDelete(); }}
+          >
+            <Trash2 className="size-3.5" />
+          </button>
+          <button
+            className="btn btn-ghost btn-xs btn-square"
+            title={expanded ? "Colapsar" : "Expandir"}
+            onClick={(e) => { e.stopPropagation(); onToggle(); }}
+          >
+            {expanded ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
+          </button>
         </div>
       </div>
 
       {/* Cuerpo expandible */}
       {expanded && (
-        <div className="border-t border-base-300 px-5 pb-4">
+        <div className="bg-base-100 px-4 pb-4 pt-2 ml-10">
           {/* Error */}
           {status === "error" && (
-            <div className="alert alert-error mt-3 text-sm">
+            <div className="alert alert-error text-sm mb-3">
               <AlertCircle className="size-4" />
               {ficha.error || "Error desconocido"}
             </div>
           )}
 
-          {/* Resultados */}
+          {/* Resultados analizados */}
           {status === "analyzed" && (
             <>
               {/* Nombre base */}
-              <div className="bg-base-300 rounded-lg p-3 mt-3">
+              <div className="bg-base-300 rounded-lg p-3">
                 <div className="text-xs uppercase text-base-content/50 tracking-wide">
                   Nombre base ({ficha.baseLanguages?.length || 0} idiomas)
                 </div>
@@ -770,10 +1074,10 @@ function FichaCard({
                 ficha.variants.map((v, idx) => (
                   <div key={idx} className="border border-success/20 bg-success/5 rounded-lg p-3 mt-2">
                     <div className="font-semibold text-success flex items-center gap-2">
-                      {v.name}
+                      &ldquo;{v.name}&rdquo;
                       {v.discoveredAt && (
-                        <span className="text-xs text-info font-normal">
-                          nuevo {new Date(v.discoveredAt).toLocaleDateString("es-ES")}
+                        <span className="text-xs text-info font-normal badge badge-xs badge-info badge-outline">
+                          Descubierto {new Date(v.discoveredAt).toLocaleDateString("es-ES")}
                         </span>
                       )}
                     </div>
@@ -787,7 +1091,7 @@ function FichaCard({
                   </div>
                 ))
               ) : (
-                <div className="alert alert-warning mt-3 text-sm">
+                <div className="alert alert-warning mt-2 text-sm">
                   Mismo nombre en los {ficha.totalLanguagesChecked} idiomas. No tiene multiidiomas configurados.
                 </div>
               )}
@@ -804,10 +1108,10 @@ function FichaCard({
                     <progress className={`progress w-full ${pct === 100 ? "progress-success" : "progress-primary"}`} value={ks.found.length} max={cat.keywords.length} />
                     <div className="flex flex-wrap gap-1 mt-2">
                       {ks.found.map((k) => (
-                        <span key={k.keyword} className="badge badge-sm badge-success badge-outline">✓ {k.keyword}</span>
+                        <span key={k.keyword} className="badge badge-sm badge-success badge-outline">{k.keyword}</span>
                       ))}
                       {ks.missing.map((k) => (
-                        <span key={k} className="badge badge-sm badge-error badge-outline">✗ {k}</span>
+                        <span key={k} className="badge badge-sm badge-error badge-outline">{k}</span>
                       ))}
                     </div>
                   </div>
@@ -849,31 +1153,25 @@ function FichaCard({
 
           {/* Pendiente */}
           {status === "pending" && (
-            <p className="text-sm text-base-content/50 mt-3">Pendiente de analizar</p>
+            <p className="text-sm text-base-content/50">Pendiente de analizar</p>
           )}
 
-          {/* Acciones */}
+          {/* Acciones de la ficha */}
           <div className="flex flex-wrap gap-2 mt-3">
             <select
               className="select select-bordered select-xs"
               value={ficha.categoryId || ""}
               onChange={(e) => onAssignCategory(e.target.value || null)}
-              onClick={(e) => e.stopPropagation()}
             >
               <option value="">Sin categoría</option>
               {categories.map((c) => (
                 <option key={c.id} value={c.id}>{c.name}</option>
               ))}
             </select>
-            <button className="btn btn-outline btn-xs" onClick={(e) => { e.stopPropagation(); onAnalyze(); }} disabled={analyzing}>
-              <RefreshCw className="size-3" /> Actualizar
-            </button>
-            <button className="btn btn-error btn-outline btn-xs" onClick={(e) => { e.stopPropagation(); onDelete(); }}>
-              <Trash2 className="size-3" /> Eliminar
-            </button>
           </div>
         </div>
       )}
     </div>
   );
 }
+
