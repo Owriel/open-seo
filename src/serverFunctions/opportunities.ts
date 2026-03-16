@@ -272,7 +272,7 @@ export const getGscAuthUrl = createServerFn({ method: "POST" })
     // Construir redirect URI dinámicamente
     // En CF Workers no hay req.url accesible aquí, usamos una var de entorno
     const baseUrl = (env as unknown as Record<string, string>).APP_URL ?? "http://localhost:5173";
-    const redirectUri = `${baseUrl}/api/gsc/callback`;
+    const redirectUri = `${baseUrl}/auth/gsc-callback`;
 
     const params = new URLSearchParams({
       client_id: clientId,
@@ -298,7 +298,7 @@ export const handleGscCallback = createServerFn({ method: "POST" })
     const clientId = (env as unknown as Record<string, string>).GOOGLE_CLIENT_ID;
     const clientSecret = (env as unknown as Record<string, string>).GOOGLE_CLIENT_SECRET;
     const baseUrl = (env as unknown as Record<string, string>).APP_URL ?? "http://localhost:5173";
-    const redirectUri = `${baseUrl}/api/gsc/callback`;
+    const redirectUri = `${baseUrl}/auth/gsc-callback`;
 
     if (!clientId || !clientSecret) {
       return { success: false, error: "Credenciales Google no configuradas" };

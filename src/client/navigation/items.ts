@@ -1,6 +1,12 @@
-import { BarChart3, Bookmark, Bot, ClipboardCheck, Database, FileText, Globe, Languages, MapPin, Network, Search, Target, TrendingUp, Users } from "lucide-react";
+import { BarChart3, Bookmark, Bot, ClipboardCheck, Database, FileBarChart, FileText, Globe, Languages, MapPin, Network, Search, Target, TrendingUp, Users } from "lucide-react";
 
 export const projectNavItems = [
+  {
+    to: "/p/$projectId/report" as const,
+    label: "Informe",
+    icon: FileBarChart,
+    matchSegment: "/report",
+  },
   {
     to: "/p/$projectId/keywords" as const,
     label: "Keywords",

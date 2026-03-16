@@ -10,13 +10,16 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ReportReportIdRouteImport } from './routes/report/$reportId'
 import { Route as HelpDataforseoApiKeyRouteImport } from './routes/help/dataforseo-api-key'
+import { Route as AuthGscCallbackRouteImport } from './routes/auth/gsc-callback'
 import { Route as PProjectIdRouteRouteImport } from './routes/p/$projectId/route'
 import { Route as PProjectIdIndexRouteImport } from './routes/p/$projectId/index'
 import { Route as PProjectIdWordpressRouteImport } from './routes/p/$projectId/wordpress'
 import { Route as PProjectIdTrackerRouteImport } from './routes/p/$projectId/tracker'
 import { Route as PProjectIdSerpRouteImport } from './routes/p/$projectId/serp'
 import { Route as PProjectIdSavedRouteImport } from './routes/p/$projectId/saved'
+import { Route as PProjectIdReportRouteImport } from './routes/p/$projectId/report'
 import { Route as PProjectIdOpportunitiesRouteImport } from './routes/p/$projectId/opportunities'
 import { Route as PProjectIdMultilangRouteImport } from './routes/p/$projectId/multilang'
 import { Route as PProjectIdLocalRouteImport } from './routes/p/$projectId/local'
@@ -36,9 +39,19 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ReportReportIdRoute = ReportReportIdRouteImport.update({
+  id: '/report/$reportId',
+  path: '/report/$reportId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const HelpDataforseoApiKeyRoute = HelpDataforseoApiKeyRouteImport.update({
   id: '/help/dataforseo-api-key',
   path: '/help/dataforseo-api-key',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthGscCallbackRoute = AuthGscCallbackRouteImport.update({
+  id: '/auth/gsc-callback',
+  path: '/auth/gsc-callback',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PProjectIdRouteRoute = PProjectIdRouteRouteImport.update({
@@ -69,6 +82,11 @@ const PProjectIdSerpRoute = PProjectIdSerpRouteImport.update({
 const PProjectIdSavedRoute = PProjectIdSavedRouteImport.update({
   id: '/saved',
   path: '/saved',
+  getParentRoute: () => PProjectIdRouteRoute,
+} as any)
+const PProjectIdReportRoute = PProjectIdReportRouteImport.update({
+  id: '/report',
+  path: '/report',
   getParentRoute: () => PProjectIdRouteRoute,
 } as any)
 const PProjectIdOpportunitiesRoute = PProjectIdOpportunitiesRouteImport.update({
@@ -142,7 +160,9 @@ const PProjectIdAuditIssuesResultIdRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/p/$projectId': typeof PProjectIdRouteRouteWithChildren
+  '/auth/gsc-callback': typeof AuthGscCallbackRoute
   '/help/dataforseo-api-key': typeof HelpDataforseoApiKeyRoute
+  '/report/$reportId': typeof ReportReportIdRoute
   '/p/$projectId/ai': typeof PProjectIdAiRoute
   '/p/$projectId/audit': typeof PProjectIdAuditRouteWithChildren
   '/p/$projectId/cache': typeof PProjectIdCacheRoute
@@ -153,6 +173,7 @@ export interface FileRoutesByFullPath {
   '/p/$projectId/local': typeof PProjectIdLocalRoute
   '/p/$projectId/multilang': typeof PProjectIdMultilangRoute
   '/p/$projectId/opportunities': typeof PProjectIdOpportunitiesRoute
+  '/p/$projectId/report': typeof PProjectIdReportRoute
   '/p/$projectId/saved': typeof PProjectIdSavedRoute
   '/p/$projectId/serp': typeof PProjectIdSerpRoute
   '/p/$projectId/tracker': typeof PProjectIdTrackerRoute
@@ -164,7 +185,9 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/auth/gsc-callback': typeof AuthGscCallbackRoute
   '/help/dataforseo-api-key': typeof HelpDataforseoApiKeyRoute
+  '/report/$reportId': typeof ReportReportIdRoute
   '/p/$projectId/ai': typeof PProjectIdAiRoute
   '/p/$projectId/cache': typeof PProjectIdCacheRoute
   '/p/$projectId/clusters': typeof PProjectIdClustersRoute
@@ -174,6 +197,7 @@ export interface FileRoutesByTo {
   '/p/$projectId/local': typeof PProjectIdLocalRoute
   '/p/$projectId/multilang': typeof PProjectIdMultilangRoute
   '/p/$projectId/opportunities': typeof PProjectIdOpportunitiesRoute
+  '/p/$projectId/report': typeof PProjectIdReportRoute
   '/p/$projectId/saved': typeof PProjectIdSavedRoute
   '/p/$projectId/serp': typeof PProjectIdSerpRoute
   '/p/$projectId/tracker': typeof PProjectIdTrackerRoute
@@ -187,7 +211,9 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/p/$projectId': typeof PProjectIdRouteRouteWithChildren
+  '/auth/gsc-callback': typeof AuthGscCallbackRoute
   '/help/dataforseo-api-key': typeof HelpDataforseoApiKeyRoute
+  '/report/$reportId': typeof ReportReportIdRoute
   '/p/$projectId/ai': typeof PProjectIdAiRoute
   '/p/$projectId/audit': typeof PProjectIdAuditRouteWithChildren
   '/p/$projectId/cache': typeof PProjectIdCacheRoute
@@ -198,6 +224,7 @@ export interface FileRoutesById {
   '/p/$projectId/local': typeof PProjectIdLocalRoute
   '/p/$projectId/multilang': typeof PProjectIdMultilangRoute
   '/p/$projectId/opportunities': typeof PProjectIdOpportunitiesRoute
+  '/p/$projectId/report': typeof PProjectIdReportRoute
   '/p/$projectId/saved': typeof PProjectIdSavedRoute
   '/p/$projectId/serp': typeof PProjectIdSerpRoute
   '/p/$projectId/tracker': typeof PProjectIdTrackerRoute
@@ -212,7 +239,9 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/p/$projectId'
+    | '/auth/gsc-callback'
     | '/help/dataforseo-api-key'
+    | '/report/$reportId'
     | '/p/$projectId/ai'
     | '/p/$projectId/audit'
     | '/p/$projectId/cache'
@@ -223,6 +252,7 @@ export interface FileRouteTypes {
     | '/p/$projectId/local'
     | '/p/$projectId/multilang'
     | '/p/$projectId/opportunities'
+    | '/p/$projectId/report'
     | '/p/$projectId/saved'
     | '/p/$projectId/serp'
     | '/p/$projectId/tracker'
@@ -234,7 +264,9 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/auth/gsc-callback'
     | '/help/dataforseo-api-key'
+    | '/report/$reportId'
     | '/p/$projectId/ai'
     | '/p/$projectId/cache'
     | '/p/$projectId/clusters'
@@ -244,6 +276,7 @@ export interface FileRouteTypes {
     | '/p/$projectId/local'
     | '/p/$projectId/multilang'
     | '/p/$projectId/opportunities'
+    | '/p/$projectId/report'
     | '/p/$projectId/saved'
     | '/p/$projectId/serp'
     | '/p/$projectId/tracker'
@@ -256,7 +289,9 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/p/$projectId'
+    | '/auth/gsc-callback'
     | '/help/dataforseo-api-key'
+    | '/report/$reportId'
     | '/p/$projectId/ai'
     | '/p/$projectId/audit'
     | '/p/$projectId/cache'
@@ -267,6 +302,7 @@ export interface FileRouteTypes {
     | '/p/$projectId/local'
     | '/p/$projectId/multilang'
     | '/p/$projectId/opportunities'
+    | '/p/$projectId/report'
     | '/p/$projectId/saved'
     | '/p/$projectId/serp'
     | '/p/$projectId/tracker'
@@ -280,7 +316,9 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   PProjectIdRouteRoute: typeof PProjectIdRouteRouteWithChildren
+  AuthGscCallbackRoute: typeof AuthGscCallbackRoute
   HelpDataforseoApiKeyRoute: typeof HelpDataforseoApiKeyRoute
+  ReportReportIdRoute: typeof ReportReportIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -292,11 +330,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/report/$reportId': {
+      id: '/report/$reportId'
+      path: '/report/$reportId'
+      fullPath: '/report/$reportId'
+      preLoaderRoute: typeof ReportReportIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/help/dataforseo-api-key': {
       id: '/help/dataforseo-api-key'
       path: '/help/dataforseo-api-key'
       fullPath: '/help/dataforseo-api-key'
       preLoaderRoute: typeof HelpDataforseoApiKeyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth/gsc-callback': {
+      id: '/auth/gsc-callback'
+      path: '/auth/gsc-callback'
+      fullPath: '/auth/gsc-callback'
+      preLoaderRoute: typeof AuthGscCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/p/$projectId': {
@@ -339,6 +391,13 @@ declare module '@tanstack/react-router' {
       path: '/saved'
       fullPath: '/p/$projectId/saved'
       preLoaderRoute: typeof PProjectIdSavedRouteImport
+      parentRoute: typeof PProjectIdRouteRoute
+    }
+    '/p/$projectId/report': {
+      id: '/p/$projectId/report'
+      path: '/report'
+      fullPath: '/p/$projectId/report'
+      preLoaderRoute: typeof PProjectIdReportRouteImport
       parentRoute: typeof PProjectIdRouteRoute
     }
     '/p/$projectId/opportunities': {
@@ -460,6 +519,7 @@ interface PProjectIdRouteRouteChildren {
   PProjectIdLocalRoute: typeof PProjectIdLocalRoute
   PProjectIdMultilangRoute: typeof PProjectIdMultilangRoute
   PProjectIdOpportunitiesRoute: typeof PProjectIdOpportunitiesRoute
+  PProjectIdReportRoute: typeof PProjectIdReportRoute
   PProjectIdSavedRoute: typeof PProjectIdSavedRoute
   PProjectIdSerpRoute: typeof PProjectIdSerpRoute
   PProjectIdTrackerRoute: typeof PProjectIdTrackerRoute
@@ -479,6 +539,7 @@ const PProjectIdRouteRouteChildren: PProjectIdRouteRouteChildren = {
   PProjectIdLocalRoute: PProjectIdLocalRoute,
   PProjectIdMultilangRoute: PProjectIdMultilangRoute,
   PProjectIdOpportunitiesRoute: PProjectIdOpportunitiesRoute,
+  PProjectIdReportRoute: PProjectIdReportRoute,
   PProjectIdSavedRoute: PProjectIdSavedRoute,
   PProjectIdSerpRoute: PProjectIdSerpRoute,
   PProjectIdTrackerRoute: PProjectIdTrackerRoute,
@@ -494,7 +555,9 @@ const PProjectIdRouteRouteWithChildren = PProjectIdRouteRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   PProjectIdRouteRoute: PProjectIdRouteRouteWithChildren,
+  AuthGscCallbackRoute: AuthGscCallbackRoute,
   HelpDataforseoApiKeyRoute: HelpDataforseoApiKeyRoute,
+  ReportReportIdRoute: ReportReportIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
