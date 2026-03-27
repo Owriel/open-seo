@@ -19,12 +19,11 @@ import {
 } from "@/server/lib/dataforseo";
 import {
   analyzeOpportunities,
-  parseCtrValue,
-  parseNumericValue,
 } from "@/server/lib/opportunities";
 import {
   buildCacheKey,
   getCached,
+  parseJson,
   setCached,
   CACHE_TTL_SECONDS,
 } from "@/server/lib/kv-cache";
@@ -53,7 +52,7 @@ async function loadAnalysisIndex(projectId: string): Promise<string[]> {
   const raw = await env.KV.get(analysisIndexKey(projectId), "text");
   if (!raw) return [];
   try {
-    return JSON.parse(raw) as string[];
+    return parseJson<string[]>(raw);
   } catch {
     return [];
   }
@@ -82,15 +81,15 @@ async function getGscTokens(projectId: string): Promise<GscTokens | null> {
   const raw = await env.KV.get(gscTokenKey(projectId), "text");
   if (!raw) return null;
   try {
-    return JSON.parse(raw) as GscTokens;
+    return parseJson<GscTokens>(raw);
   } catch {
     return null;
   }
 }
 
 async function refreshGscAccessToken(projectId: string, tokens: GscTokens): Promise<GscTokens | null> {
-  const clientId = (env as unknown as Record<string, string>).GOOGLE_CLIENT_ID;
-  const clientSecret = (env as unknown as Record<string, string>).GOOGLE_CLIENT_SECRET;
+  const clientId = env.GOOGLE_CLIENT_ID;
+  const clientSecret = env.GOOGLE_CLIENT_SECRET;
   if (!clientId || !clientSecret) return null;
 
   const resp = await fetch("https://oauth2.googleapis.com/token", {
@@ -106,7 +105,7 @@ async function refreshGscAccessToken(projectId: string, tokens: GscTokens): Prom
 
   if (!resp.ok) return null;
 
-  const data = await resp.json() as { access_token: string; expires_in: number };
+  const data: { access_token: string; expires_in: number } = await resp.json();
   const updated: GscTokens = {
     ...tokens,
     access_token: data.access_token,
@@ -181,14 +180,12 @@ export const analyzeWithDataforseo = createServerFn({ method: "POST" })
       languageCode: data.languageCode,
     });
 
-    const cached = await getCached(cacheKey) as { keywords: OpportunityKeyword[] } | null;
+    const cached = await getCached<{ keywords: OpportunityKeyword[] }>(cacheKey);
     let keywords: OpportunityKeyword[];
 
     if (cached?.keywords?.length) {
-      console.log("[OPPORTUNITIES] DataForSEO cache hit:", cached.keywords.length, "keywords");
       keywords = cached.keywords;
     } else {
-      console.log("[OPPORTUNITIES] DataForSEO cache miss, fetching...");
       // Pedir hasta 700 keywords ordenadas por volumen para tener suficientes datos
       const rawItems = await fetchRankedKeywordsRaw(
         domain,
@@ -264,14 +261,14 @@ export const getGscAuthUrl = createServerFn({ method: "POST" })
   .middleware(authenticatedServerFunctionMiddleware)
   .inputValidator((data: unknown) => gscAuthUrlSchema.parse(data))
   .handler(async ({ data }) => {
-    const clientId = (env as unknown as Record<string, string>).GOOGLE_CLIENT_ID;
+    const clientId = env.GOOGLE_CLIENT_ID;
     if (!clientId) {
       return { url: null, error: "GOOGLE_CLIENT_ID no configurado en wrangler.jsonc" };
     }
 
     // Construir redirect URI dinámicamente
     // En CF Workers no hay req.url accesible aquí, usamos una var de entorno
-    const baseUrl = (env as unknown as Record<string, string>).APP_URL ?? "http://localhost:5173";
+    const baseUrl = env.APP_URL ?? "http://localhost:5173";
     const redirectUri = `${baseUrl}/auth/gsc-callback`;
 
     const params = new URLSearchParams({
@@ -295,9 +292,9 @@ export const handleGscCallback = createServerFn({ method: "POST" })
   .middleware(authenticatedServerFunctionMiddleware)
   .inputValidator((data: unknown) => gscCallbackSchema.parse(data))
   .handler(async ({ data }) => {
-    const clientId = (env as unknown as Record<string, string>).GOOGLE_CLIENT_ID;
-    const clientSecret = (env as unknown as Record<string, string>).GOOGLE_CLIENT_SECRET;
-    const baseUrl = (env as unknown as Record<string, string>).APP_URL ?? "http://localhost:5173";
+    const clientId = env.GOOGLE_CLIENT_ID;
+    const clientSecret = env.GOOGLE_CLIENT_SECRET;
+    const baseUrl = env.APP_URL ?? "http://localhost:5173";
     const redirectUri = `${baseUrl}/auth/gsc-callback`;
 
     if (!clientId || !clientSecret) {
@@ -323,11 +320,11 @@ export const handleGscCallback = createServerFn({ method: "POST" })
       return { success: false, error: "Error al intercambiar el código OAuth" };
     }
 
-    const tokenData = await tokenResp.json() as {
+    const tokenData: {
       access_token: string;
       refresh_token: string;
       expires_in: number;
-    };
+    } = await tokenResp.json();
 
     // Obtener email del usuario
     let email: string | null = null;
@@ -336,7 +333,7 @@ export const handleGscCallback = createServerFn({ method: "POST" })
         headers: { Authorization: `Bearer ${tokenData.access_token}` },
       });
       if (userResp.ok) {
-        const userData = await userResp.json() as { email: string };
+        const userData: { email: string } = await userResp.json();
         email = userData.email;
       }
     } catch {
@@ -378,7 +375,7 @@ export const getGscStatus = createServerFn({ method: "POST" })
       if (!resp.ok) {
         return { connected: false, email: tokens.email, properties: null };
       }
-      const sitesData = await resp.json() as { siteEntry?: Array<{ siteUrl: string }> };
+      const sitesData: { siteEntry?: Array<{ siteUrl: string }> } = await resp.json();
       const properties = (sitesData.siteEntry ?? []).map((s) => s.siteUrl);
       return { connected: true, email: tokens.email, properties };
     } catch {
@@ -394,6 +391,8 @@ export const disconnectGsc = createServerFn({ method: "POST" })
     await env.KV.delete(gscTokenKey(data.projectId));
     return { success: true };
   });
+
+const formatDate = (d: Date) => d.toISOString().split("T")[0];
 
 /** Analiza keywords de oportunidad usando datos de GSC */
 export const analyzeWithGsc = createServerFn({ method: "POST" })
@@ -412,8 +411,6 @@ export const analyzeWithGsc = createServerFn({ method: "POST" })
       "7d": 7, "28d": 28, "3m": 90, "6m": 180, "12m": 365, "16m": 480,
     };
     startDate.setDate(startDate.getDate() - (rangeMap[data.dateRange] ?? 90));
-
-    const formatDate = (d: Date) => d.toISOString().split("T")[0];
 
     // Consultar GSC Search Analytics API — queries + pages
     const gscResp = await fetch(
@@ -440,7 +437,7 @@ export const analyzeWithGsc = createServerFn({ method: "POST" })
       throw new Error("Error al consultar Google Search Console");
     }
 
-    const gscData = await gscResp.json() as {
+    const gscData: {
       rows?: Array<{
         keys: string[];
         clicks: number;
@@ -448,7 +445,7 @@ export const analyzeWithGsc = createServerFn({ method: "POST" })
         ctr: number;
         position: number;
       }>;
-    };
+    } = await gscResp.json();
 
     const rows = gscData.rows ?? [];
 
@@ -518,7 +515,7 @@ export const getOpportunityAnalyses = createServerFn({ method: "POST" })
       const raw = await env.KV.get(analysisKey(data.projectId, id), "text");
       if (raw) {
         try {
-          analyses.push(JSON.parse(raw) as OpportunityAnalysis);
+          analyses.push(parseJson<OpportunityAnalysis>(raw));
         } catch {
           // Skip corruptos
         }

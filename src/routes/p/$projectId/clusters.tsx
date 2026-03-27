@@ -47,7 +47,7 @@ function ClustersPage() {
   }, [projectId]);
 
   useEffect(() => {
-    loadPlans();
+    void loadPlans();
   }, [loadPlans]);
 
   const clusterMutation = useMutation({
@@ -61,7 +61,7 @@ function ClustersPage() {
     onSuccess: () => {
       toast.success("Plan guardado");
       setPlanName("");
-      loadPlans();
+      void loadPlans();
     },
     onError: (err) => toast.error(getStandardErrorMessage(err, "Error al guardar")),
   });
@@ -71,7 +71,7 @@ function ClustersPage() {
       deleteClusterPlan({ data }),
     onSuccess: () => {
       toast.success("Plan eliminado");
-      loadPlans();
+      void loadPlans();
     },
   });
 

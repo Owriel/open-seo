@@ -16,6 +16,7 @@ import {
 } from "@/types/schemas/multilang";
 import type { MultilangDB, MultilangFicha, PlaceSearchResult } from "@/types/multilang";
 import { analyzeFicha, searchPlaces as searchPlacesLib } from "@/server/lib/multilang";
+import { parseJson } from "@/server/lib/kv-cache";
 
 // ============================================================================
 // Helpers de KV
@@ -31,7 +32,7 @@ async function loadDB(projectId: string): Promise<MultilangDB> {
   try {
     const raw = await env.KV.get(kvKey(projectId), "text");
     if (!raw) return { fichas: [], categories: [] };
-    const db = JSON.parse(raw) as MultilangDB;
+    const db = parseJson<MultilangDB>(raw);
     // Migración por si faltan campos
     if (!db.categories) db.categories = [];
     if (!db.fichas) db.fichas = [];

@@ -22,9 +22,7 @@ import {
 } from "@/serverFunctions/tracker";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
 import {
-  LOCATIONS,
   getLanguageCode,
-  formatNumber,
   csvEscape,
 } from "@/client/features/keywords/utils";
 

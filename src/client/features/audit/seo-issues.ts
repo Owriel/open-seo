@@ -439,7 +439,7 @@ export function analyzeSeoIssues(pages: AuditPage[]): SeoIssuesSummary {
     warnings: warningCount,
     infos: infoCount,
     score,
-    issues: issues.sort((a, b) => {
+    issues: issues.toSorted((a, b) => {
       const severityOrder = { error: 0, warning: 1, info: 2 };
       return severityOrder[a.severity] - severityOrder[b.severity];
     }),

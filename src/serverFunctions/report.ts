@@ -20,7 +20,7 @@ import {
   fetchGoogleMapsResultsRaw,
   fetchKeywordSuggestionsRaw,
 } from "@/server/lib/dataforseo";
-import { buildCacheKey, getCached, setCached, CACHE_TTL_SECONDS } from "@/server/lib/kv-cache";
+import { buildCacheKey, getCached, parseJson, setCached, CACHE_TTL_SECONDS } from "@/server/lib/kv-cache";
 import { analyzeOpportunities } from "@/server/lib/opportunities";
 import { runMiniCrawl } from "@/server/lib/report-crawl";
 import { calculateScores } from "@/server/lib/report";
@@ -59,7 +59,7 @@ function publicReportKey(publicId: string) {
 async function loadReportIndex(projectId: string): Promise<string[]> {
   const raw = await env.KV.get(reportIndexKey(projectId), "text");
   if (!raw) return [];
-  try { return JSON.parse(raw) as string[]; } catch { return []; }
+  try { return parseJson<string[]>(raw); } catch { return []; }
 }
 
 async function saveReportIndex(projectId: string, ids: string[]) {
@@ -76,7 +76,6 @@ export const generateReport = createServerFn({ method: "POST" })
   .handler(async ({ data }): Promise<SeoReport> => {
     const domain = normalizeDomainInput(data.domain, true);
     const reportId = crypto.randomUUID();
-    console.log(`[REPORT] Generando informe ${reportId} para ${domain}...`);
 
     // ===== FASE 1: Ejecutar todo en paralelo =====
     const [
@@ -258,7 +257,6 @@ export const generateReport = createServerFn({ method: "POST" })
     index.unshift(reportId);
     await saveReportIndex(data.projectId, index);
 
-    console.log(`[REPORT] Informe ${reportId} generado. Score global: ${scores.global.score}/100`);
     return report;
   });
 
@@ -277,7 +275,7 @@ async function fetchCompetitorsRaw(
     languageCode,
   });
 
-  const cached = await getCached(cacheKey) as { competitors: CompetitorRow[] } | null;
+  const cached = await getCached<{ competitors: CompetitorRow[] }>(cacheKey);
   if (cached?.competitors?.length) return cached.competitors;
 
   try {
@@ -286,7 +284,9 @@ async function fetchCompetitorsRaw(
       .filter((item) => item.domain && item.domain !== domain)
       .map((item) => {
         const metricsObj = item.full_domain_metrics ?? {};
-        const firstEntry = Object.values(metricsObj)[0] as { organic?: { etv?: number | null; count?: number | null } } | undefined;
+        type MetricsEntry = { organic?: { etv?: number | null; count?: number | null } };
+        // eslint-disable-next-line typescript/no-unsafe-type-assertion
+        const firstEntry = Object.values(metricsObj)[0] as MetricsEntry | undefined;
         const organicMetrics = firstEntry?.organic;
         return {
           domain: item.domain ?? "",
@@ -326,7 +326,7 @@ async function fetchContentGap(
     limit: 50,
   });
 
-  const cached = await getCached(cacheKey) as { keywords: KeywordIntersectionRow[] } | null;
+  const cached = await getCached<{ keywords: KeywordIntersectionRow[] }>(cacheKey);
   if (cached?.keywords?.length) return cached.keywords;
 
   try {
@@ -372,7 +372,7 @@ async function fetchLocalPackRaw(
   languageCode: string,
 ): Promise<LocalPackResult[]> {
   const cacheKey = buildCacheKey("local:pack", { keyword, locationCode, languageCode });
-  const cached = await getCached(cacheKey) as { results: LocalPackResult[] } | null;
+  const cached = await getCached<{ results: LocalPackResult[] }>(cacheKey);
   if (cached?.results?.length) return cached.results;
 
   try {
@@ -391,7 +391,7 @@ async function fetchLocalPackRaw(
           ratingDistribution: item.rating_distribution ?? null,
           position: item.rank_group ?? idx + 1,
           category: item.category ?? null,
-          additionalCategories: (item.additional_categories ?? []).filter(Boolean) as string[],
+          additionalCategories: (item.additional_categories ?? []).filter(Boolean),
           address: item.address ?? null,
           city: item.address_info?.city ?? null,
           phone: item.phone ?? null,
@@ -431,7 +431,7 @@ async function fetchLocalKeywordsRaw(
   languageCode: string,
 ): Promise<LocalKeywordSuggestion[]> {
   const cacheKey = buildCacheKey("local:keywords", { keyword, locationCode, languageCode, limit: 30 });
-  const cached = await getCached(cacheKey) as { keywords: LocalKeywordSuggestion[] } | null;
+  const cached = await getCached<{ keywords: LocalKeywordSuggestion[] }>(cacheKey);
   if (cached?.keywords?.length) return cached.keywords;
 
   try {
@@ -515,7 +515,7 @@ export const getReport = createServerFn({ method: "POST" })
   .handler(async ({ data }): Promise<SeoReport | null> => {
     const raw = await env.KV.get(reportKey(data.projectId, data.reportId), "text");
     if (!raw) return null;
-    try { return JSON.parse(raw) as SeoReport; } catch { return null; }
+    try { return parseJson<SeoReport>(raw); } catch { return null; }
   });
 
 export const getReports = createServerFn({ method: "POST" })
@@ -529,7 +529,7 @@ export const getReports = createServerFn({ method: "POST" })
       const raw = await env.KV.get(reportKey(data.projectId, id), "text");
       if (raw) {
         try {
-          const report = JSON.parse(raw) as SeoReport;
+          const report = parseJson<SeoReport>(raw);
           reports.push({
             id: report.id,
             domain: report.domain,
@@ -550,7 +550,7 @@ export const deleteReport = createServerFn({ method: "POST" })
     const raw = await env.KV.get(reportKey(data.projectId, data.reportId), "text");
     if (raw) {
       try {
-        const report = JSON.parse(raw) as SeoReport;
+        const report = parseJson<SeoReport>(raw);
         if (report.publicId) {
           await env.KV.delete(publicReportKey(report.publicId));
         }
@@ -574,7 +574,7 @@ export const generatePublicLink = createServerFn({ method: "POST" })
     const raw = await env.KV.get(reportKey(data.projectId, data.reportId), "text");
     if (!raw) throw new Error("NOT_FOUND");
 
-    const report = JSON.parse(raw) as SeoReport;
+    const report = parseJson<SeoReport>(raw);
 
     // Si ya tiene publicId, reutilizarlo
     if (report.publicId) {
@@ -600,7 +600,7 @@ export const disablePublicLink = createServerFn({ method: "POST" })
     const raw = await env.KV.get(reportKey(data.projectId, data.reportId), "text");
     if (!raw) throw new Error("NOT_FOUND");
 
-    const report = JSON.parse(raw) as SeoReport;
+    const report = parseJson<SeoReport>(raw);
     if (report.publicId) {
       await env.KV.delete(publicReportKey(report.publicId));
       report.publicId = null;
@@ -619,5 +619,5 @@ export const getPublicReport = createServerFn({ method: "POST" })
   .handler(async ({ data }): Promise<SeoReport | null> => {
     const raw = await env.KV.get(publicReportKey(data.reportId), "text");
     if (!raw) return null;
-    try { return JSON.parse(raw) as SeoReport; } catch { return null; }
+    try { return parseJson<SeoReport>(raw); } catch { return null; }
   });

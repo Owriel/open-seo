@@ -11,8 +11,6 @@ import {
   Save,
   Trash2,
   AlertTriangle,
-  TrendingUp,
-  ArrowUpRight,
   ChevronDown,
   ChevronUp,
   Unlink,
@@ -23,7 +21,6 @@ import {
   analyzeWithGsc,
   getGscAuthUrl,
   getGscStatus,
-  handleGscCallback,
   disconnectGsc,
   saveOpportunityAnalysis,
   getOpportunityAnalyses,
@@ -129,31 +126,17 @@ function OpportunitiesPage() {
   }, [projectId]);
 
   useEffect(() => {
-    loadAnalyses();
-    loadGscStatus();
+    void loadAnalyses();
+    void loadGscStatus();
   }, [loadAnalyses, loadGscStatus]);
 
-  // Manejar callback OAuth (si hay ?code= en la URL)
+  // Detectar si venimos del callback OAuth (redirigido desde /auth/gsc-callback)
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const code = params.get("code");
-    const state = params.get("state");
-    if (code && state === projectId) {
-      handleGscCallback({ data: { code, projectId } })
-        .then((result) => {
-          if (result.success) {
-            toast.success(`GSC conectado${result.email ? ` (${result.email})` : ""}`);
-            loadGscStatus();
-          } else {
-            toast.error(result.error ?? "Error al conectar GSC");
-          }
-        })
-        .catch(() => toast.error("Error al procesar callback OAuth"))
-        .finally(() => {
-          // Limpiar la URL
-          const clean = window.location.pathname;
-          window.history.replaceState({}, "", clean);
-        });
+    if (params.get("gsc_connected") === "1") {
+      toast.success("Google Search Console conectado");
+      void loadGscStatus();
+      window.history.replaceState({}, "", window.location.pathname);
     }
   }, [projectId, loadGscStatus]);
 
@@ -218,7 +201,7 @@ function OpportunitiesPage() {
     },
     onSuccess: () => {
       toast.success("Análisis guardado");
-      loadAnalyses();
+      void loadAnalyses();
     },
     onError: (err) => toast.error(getStandardErrorMessage(err, "Error al guardar")),
   });
@@ -228,7 +211,7 @@ function OpportunitiesPage() {
       deleteOpportunityAnalysis({ data: { projectId, analysisId } }),
     onSuccess: () => {
       toast.success("Análisis eliminado");
-      loadAnalyses();
+      void loadAnalyses();
     },
   });
 
@@ -267,8 +250,9 @@ function OpportunitiesPage() {
 
     setCsvFileName(file.name);
     const reader = new FileReader();
-    reader.onload = (event) => {
-      const text = event.target?.result as string;
+    reader.addEventListener("load", (event) => {
+      const result = event.target?.result;
+      const text = typeof result === "string" ? result : "";
       if (!text) return;
 
       const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
@@ -309,7 +293,7 @@ function OpportunitiesPage() {
 
       setCsvRows(rows);
       toast.success(`${rows.length} keywords cargadas desde CSV`);
-    };
+    });
     reader.readAsText(file);
   };
 
@@ -355,10 +339,10 @@ function OpportunitiesPage() {
   };
 
   // Ordenar resultados
-  const sortedResults = [...(analysisResult?.results ?? [])].sort((a, b) => {
+  const sortedResults = [...(analysisResult?.results ?? [])].toSorted((a, b) => {
     const aVal = a[sortField] ?? 0;
     const bVal = b[sortField] ?? 0;
-    return sortDir === "desc" ? (bVal as number) - (aVal as number) : (aVal as number) - (bVal as number);
+    return sortDir === "desc" ? bVal - aVal : aVal - bVal;
   });
 
   const handleSort = (field: typeof sortField) => {
@@ -482,7 +466,7 @@ function OpportunitiesPage() {
                   <select
                     className="select select-bordered select-sm w-auto"
                     value={gscDateRange}
-                    onChange={(e) => setGscDateRange(e.target.value as typeof gscDateRange)}
+                    onChange={(e) => { const v = e.target.value; if (v === "7d" || v === "28d" || v === "3m" || v === "6m" || v === "12m" || v === "16m") setGscDateRange(v); }}
                   >
                     <option value="7d">7 días</option>
                     <option value="28d">28 días</option>

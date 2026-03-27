@@ -3,8 +3,8 @@
 ## Stack
 - TanStack Start + React + Cloudflare Workers + KV (D1, R2)
 - Wrangler para deploy y dev local
-- Auth: HMAC-signed cookies (credenciales: Jesus/Alonsito1234_)
-- wrangler.jsonc: AUTH_MODE: "local_noauth" para desarrollo
+- Auth: HMAC-signed cookies (credenciales en env var AUTH_USERS)
+- Secrets en `.dev.vars` (local) o `wrangler secret put` (prod)
 
 ---
 
@@ -47,23 +47,14 @@ Analiza fichas de Google Business Profile en **81 idiomas** para detectar varian
 - Primero prueba "es" como test — si falla, devuelve error con debug info
 
 ### API Key
-- Google Places API: `AIzaSyBu7TCezaciiRXVVwtPKUmmoDPOzbZ_D_o`
-
-### Funciones legacy (aún presentes)
-- `fetchNameForLang()` — usa API interna de Google Maps (NO funciona desde CF Workers). Se sigue usando como fallback en `resolveFtid()` para resolver ftids parciales (formato `0x0:0xHEX`). Podría eliminarse si no se necesita esa resolución
-- `resolveUrl()` — sigue redirects para extraer ftid de URLs de Maps
-- `extractFtidFromUrl()` — regex simple para sacar ftid de una URL
+- Google Places API: configurada en env var `GOOGLE_PLACES_API_KEY` (ver `.dev.vars`)
 
 ### Problemas conocidos y resueltos
 1. **Google Maps internal API bloqueada desde CF Workers** → Solucionado con Places API oficial
 2. **ftid resolution sin API** → Solucionado con `decodeFtidFromPlaceId()` (decode protobuf)
 3. **CORS bloquea fetch a google.com desde browser** → No aplica, todo el análisis corre server-side en CF Workers
-4. **`window.confirm()` bloquea tab del navegador** → Cuidado al usar MCP tools, el confirm() en `handleRefreshAll` bloquea la interacción
-
-### Pendientes / Limpieza
-- Eliminar schemas no usados en `src/types/schemas/multilang.ts`
-- `fetchNameForLang()` podría eliminarse si ya no se necesita resolver ftids parciales (0x0:0xHEX) — evaluar si resolveFtid sigue siendo necesaria con el nuevo flujo
-- La `googleMapsUri` de Google Places API devuelve URLs con `?cid=DECIMAL`, no hex ftids
+4. **`fetchNameForLang()` eliminada** → Usaba API interna de Google Maps, no funcionaba desde CF Workers
+5. **Credenciales movidas a env vars** → AUTH_USERS, AUTH_SECRET, GOOGLE_PLACES_API_KEY en `.dev.vars`
 
 ---
 

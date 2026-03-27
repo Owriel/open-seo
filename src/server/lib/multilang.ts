@@ -6,10 +6,15 @@
  */
 
 import { GOOGLE_LANGUAGES } from "@/types/multilang";
-import type { MultilangFicha, LangResult, MultilangVariant } from "@/types/multilang";
+import type { MultilangFicha, LangResult, MultilangVariant, PlaceSearchResult } from "@/types/multilang";
+import { env } from "cloudflare:workers";
 
-// API Key de Google Places (para buscar fichas por nombre)
-const GOOGLE_PLACES_API_KEY = "AIzaSyBu7TCezaciiRXVVwtPKUmmoDPOzbZ_D_o";
+/** Obtiene la API key de Google Places desde variables de entorno */
+function getGooglePlacesApiKey(): string {
+  const key = env.GOOGLE_PLACES_API_KEY;
+  if (!key) throw new Error("GOOGLE_PLACES_API_KEY no configurada en variables de entorno");
+  return key;
+}
 
 // Concurrencia de peticiones por batch
 const CONCURRENCY = 5;
@@ -106,81 +111,6 @@ export async function resolveUrl(inputUrl: string, maxRedirects = 5): Promise<st
 }
 
 /**
- * Obtiene el nombre de un negocio en un idioma específico usando la API interna de Google Maps.
- * Retorna el nombre o null.
- */
-export async function fetchNameForLang(
-  ftid: string,
-  lang: string,
-  returnFtid = false,
-): Promise<string | { name: string | null; realFtid: string | null } | null> {
-  try {
-    const reqPath = `/maps/preview/place?authuser=0&hl=${lang}&gl=es&pb=!1m17!1s${ftid}!3m12!1m3!1d500!2d0!3d0!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!4m2!3d0!4d0`;
-
-    const response = await fetch(`https://www.google.com${reqPath}`, {
-      headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-        Cookie: "CONSENT=YES+cb.20210720-07-p0.en+FX+111",
-        "Accept-Language": lang,
-      },
-      signal: AbortSignal.timeout(8000),
-    });
-
-    const data = await response.text();
-    const cleaned = data.replace(/^\)\]\}'\n?/, "");
-
-    // Estrategia 1: ftid completo
-    if (!ftid.startsWith("0x0:")) {
-      const idx = cleaned.indexOf(ftid);
-      if (idx > -1) {
-        const after = cleaned.substring(idx + ftid.length);
-        const m = after.match(/,"([^"]+)"/);
-        if (m) {
-          const decoded = m[1].replace(/\\u[\dA-Fa-f]{4}/g, (x) =>
-            String.fromCharCode(parseInt(x.replace("\\u", ""), 16)),
-          );
-          return returnFtid ? { name: decoded, realFtid: ftid } : decoded;
-        }
-      }
-    }
-
-    // Estrategia 2: encontrar ftid real desde CID
-    const cidHex = ftid.split(":")[1];
-    const re = new RegExp(`(0x[0-9a-f]{4,}:${cidHex})`, "i");
-    const realMatch = cleaned.match(re);
-    if (realMatch && !realMatch[1].startsWith("0x0:")) {
-      const realFtid = realMatch[1];
-      const idx = cleaned.indexOf(realFtid);
-      if (idx > -1) {
-        const after = cleaned.substring(idx + realFtid.length);
-        const m = after.match(/,"([^"]+)"/);
-        if (m && !m[1].startsWith("ChIJ") && !m[1].startsWith("0x")) {
-          const decoded = m[1].replace(/\\u[\dA-Fa-f]{4}/g, (x) =>
-            String.fromCharCode(parseInt(x.replace("\\u", ""), 16)),
-          );
-          return returnFtid ? { name: decoded, realFtid } : decoded;
-        }
-      }
-    }
-
-    // Estrategia 3: fallback pattern
-    const all = [...cleaned.matchAll(/(0x[0-9a-f]{4,}:0x[0-9a-f]{4,})","([^"]+)"/gi)];
-    for (const match of all) {
-      if (!match[1].startsWith("0x0:") && !match[2].startsWith("ChIJ") && !/^0x/.test(match[2])) {
-        const decoded = match[2].replace(/\\u[\dA-Fa-f]{4}/g, (x) =>
-          String.fromCharCode(parseInt(x.replace("\\u", ""), 16)),
-        );
-        return returnFtid ? { name: decoded, realFtid: match[1] } : decoded;
-      }
-    }
-
-    return returnFtid ? { name: null, realFtid: null } : null;
-  } catch {
-    return returnFtid ? { name: null, realFtid: null } : null;
-  }
-}
-
-/**
  * Busca una ficha de negocio por nombre usando Google Places API Text Search.
  */
 export async function searchPlaceByName(
@@ -191,21 +121,21 @@ export async function searchPlaceByName(
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-Goog-Api-Key": GOOGLE_PLACES_API_KEY,
+        "X-Goog-Api-Key": getGooglePlacesApiKey(),
         "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress,places.googleMapsUri",
       },
       body: JSON.stringify({ textQuery: businessName, languageCode: "es" }),
       signal: AbortSignal.timeout(10000),
     });
 
-    const json = (await response.json()) as {
+    const json: {
       places?: Array<{
         id: string;
         displayName?: { text: string };
         formattedAddress?: string;
         googleMapsUri?: string;
       }>;
-    };
+    } = await response.json();
 
     if (json.places && json.places.length > 0) {
       const place = json.places[0];
@@ -228,13 +158,13 @@ export async function searchPlaceByName(
  */
 export async function searchPlaces(
   query: string,
-): Promise<import("@/types/multilang").PlaceSearchResult[]> {
+): Promise<PlaceSearchResult[]> {
   try {
     const response = await fetch("https://places.googleapis.com/v1/places:searchText", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-Goog-Api-Key": GOOGLE_PLACES_API_KEY,
+        "X-Goog-Api-Key": getGooglePlacesApiKey(),
         "X-Goog-FieldMask":
           "places.id,places.displayName,places.formattedAddress,places.googleMapsUri,places.rating,places.userRatingCount",
       },
@@ -242,7 +172,7 @@ export async function searchPlaces(
       signal: AbortSignal.timeout(10000),
     });
 
-    const json = (await response.json()) as {
+    const json: {
       places?: Array<{
         id: string;
         displayName?: { text: string };
@@ -251,7 +181,7 @@ export async function searchPlaces(
         rating?: number;
         userRatingCount?: number;
       }>;
-    };
+    } = await response.json();
 
     if (!json.places || json.places.length === 0) return [];
 
@@ -270,45 +200,22 @@ export async function searchPlaces(
 
 /**
  * Resuelve el ftid completo de una URL de Google Maps.
- * Intenta varias estrategias: extracción directa, CID decimal, seguir redirects.
+ * Estrategias: decode placeId, extracción de URL, seguir redirects, CID decimal.
  */
 export async function resolveFtid(url: string, placeId?: string): Promise<string | null> {
-  // Intento 0: decodificar ftid directamente del placeId (más rápido, sin API calls)
+  // 1. Decodificar ftid directamente del placeId (más rápido, sin API calls)
   if (placeId) {
     const decoded = decodeFtidFromPlaceId(placeId);
     if (decoded) return decoded;
   }
 
-  // Intento directo con hex en URL
+  // 2. Extraer hex ftid directamente de la URL
   let ftid = extractFtidFromUrl(url);
   if (isValidFtid(ftid)) return ftid;
 
-  // Variable para guardar CID fallback si no encontramos algo mejor
-  let cidFallback: string | null = null;
-
-  // CID decimal → probar con probe
-  const decMatch = url.match(/[?&]cid=(\d+)/);
-  if (decMatch) {
-    const cidFtid = `0x0:0x${BigInt(decMatch[1]).toString(16)}`;
-    const probe = (await fetchNameForLang(cidFtid, "es", true)) as {
-      name: string | null;
-      realFtid: string | null;
-    };
-    if (probe.realFtid && isValidFtid(probe.realFtid)) return probe.realFtid;
-    cidFallback = cidFtid; // Guardar pero NO retornar aún — intentar resolveUrl primero
-  }
-
-  // Intentar resolver via placeId → probar como identificador directo en Google Maps
+  // 3. Intentar resolver via placeId construyendo una URL de Maps
   if (placeId) {
     try {
-      // Intentar usar placeId directamente en fetchNameForLang (Google acepta ChIJ... en !1s)
-      const probeResult = (await fetchNameForLang(placeId, "es", true)) as {
-        name: string | null;
-        realFtid: string | null;
-      };
-      if (probeResult.realFtid && isValidFtid(probeResult.realFtid)) return probeResult.realFtid;
-
-      // Si no encontró ftid real, intentar via URL de Google Maps
       const pidUrl = `https://www.google.com/maps/search/?api=1&query=Google&query_place_id=${placeId}`;
       const resolved = await resolveUrl(pidUrl);
       ftid = extractFtidFromUrl(resolved);
@@ -318,24 +225,18 @@ export async function resolveFtid(url: string, placeId?: string): Promise<string
     }
   }
 
-  // URL corta → resolver siguiendo redirects
+  // 4. URL corta → resolver siguiendo redirects
   const resolved = await resolveUrl(url);
   ftid = extractFtidFromUrl(resolved);
   if (isValidFtid(ftid)) return ftid;
 
-  const decMatch2 = resolved.match(/[?&]cid=(\d+)/);
-  if (decMatch2) {
-    const cidFtid = `0x0:0x${BigInt(decMatch2[1]).toString(16)}`;
-    const probe = (await fetchNameForLang(cidFtid, "es", true)) as {
-      name: string | null;
-      realFtid: string | null;
-    };
-    if (probe.realFtid && isValidFtid(probe.realFtid)) return probe.realFtid;
-    if (!cidFallback) cidFallback = cidFtid;
+  // 5. CID decimal como fallback (formato parcial 0x0:0xHEX)
+  const cidFromUrl = url.match(/[?&]cid=(\d+)/) || resolved.match(/[?&]cid=(\d+)/);
+  if (cidFromUrl) {
+    return `0x0:0x${BigInt(cidFromUrl[1]).toString(16)}`;
   }
 
-  // Último recurso: retornar el CID fallback (formato 0x0:) o null
-  return cidFallback;
+  return null;
 }
 
 /**
@@ -352,14 +253,14 @@ export async function fetchNameViaPlacesAPI(
       `https://places.googleapis.com/v1/places/${placeId}?languageCode=${lang}`,
       {
         headers: {
-          "X-Goog-Api-Key": GOOGLE_PLACES_API_KEY,
+          "X-Goog-Api-Key": getGooglePlacesApiKey(),
           "X-Goog-FieldMask": "displayName",
         },
         signal: AbortSignal.timeout(15000),
       },
     );
     if (!response.ok) return null;
-    const json = (await response.json()) as { displayName?: { text: string } };
+    const json: { displayName?: { text: string } } = await response.json();
     return json.displayName?.text || null;
   } catch {
     return null;
@@ -420,7 +321,7 @@ export async function analyzeFicha(ficha: MultilangFicha): Promise<MultilangFich
   }
 
   // 3. Probar primero un idioma para verificar que la API funciona
-  const testName = await fetchNameViaPlacesAPI(placeId!, "es");
+  const testName = await fetchNameViaPlacesAPI(placeId, "es");
   if (!testName) {
     // Debug: hacer una llamada raw y guardar el error detallado
     let debugInfo = `placeId=${placeId}`;
@@ -429,7 +330,7 @@ export async function analyzeFicha(ficha: MultilangFicha): Promise<MultilangFich
         `https://places.googleapis.com/v1/places/${placeId}?languageCode=es`,
         {
           headers: {
-            "X-Goog-Api-Key": GOOGLE_PLACES_API_KEY,
+            "X-Goog-Api-Key": getGooglePlacesApiKey(),
             "X-Goog-FieldMask": "displayName",
           },
         },
@@ -457,7 +358,7 @@ export async function analyzeFicha(ficha: MultilangFicha): Promise<MultilangFich
     const batch = remainingLangs.slice(i, i + CONCURRENCY);
     const batchResults = await Promise.all(
       batch.map(async (lang) => {
-        const title = await fetchNameViaPlacesAPI(placeId!, lang.code);
+        const title = await fetchNameViaPlacesAPI(placeId, lang.code);
         return title ? { code: lang.code, name: lang.name, title } : null;
       }),
     );

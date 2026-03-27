@@ -15,6 +15,7 @@ import {
   setCached,
   CACHE_TTL,
 } from "@/server/lib/kv-cache";
+
 import type { CompetitorRow, KeywordIntersectionRow } from "@/types/competitors";
 
 export const findCompetitors = createServerFn({ method: "POST" })
@@ -30,13 +31,11 @@ export const findCompetitors = createServerFn({ method: "POST" })
       languageCode: data.languageCode,
     });
 
-    const cachedRaw = await getCached(cacheKey) as { competitors: CompetitorRow[] } | null;
+    const cachedRaw = await getCached<{ competitors: CompetitorRow[] }>(cacheKey);
     if (cachedRaw && cachedRaw.competitors?.length > 0) {
-      console.log("[COMPETITORS] Serving from cache:", cachedRaw.competitors.length, "competitors");
       return cachedRaw;
     }
 
-    console.log("[COMPETITORS] Cache miss, calling DataForSEO...");
     const rawItems = await fetchCompetitorsDomainRaw(
       target,
       data.locationCode,
@@ -49,7 +48,9 @@ export const findCompetitors = createServerFn({ method: "POST" })
       .map((item) => {
         // Extract organic metrics from full_domain_metrics (the key varies by location)
         const metricsObj = item.full_domain_metrics ?? {};
-        const firstEntry = Object.values(metricsObj)[0] as { organic?: { etv?: number | null; count?: number | null } } | undefined;
+        type MetricsEntry = { organic?: { etv?: number | null; count?: number | null } };
+        // eslint-disable-next-line typescript/no-unsafe-type-assertion
+        const firstEntry = Object.values(metricsObj)[0] as MetricsEntry | undefined;
         const organicMetrics = firstEntry?.organic;
 
         return {
@@ -87,13 +88,11 @@ export const getKeywordIntersection = createServerFn({ method: "POST" })
       limit: data.limit,
     });
 
-    const cachedRaw = await getCached(cacheKey) as { keywords: KeywordIntersectionRow[]; totalCount: number } | null;
+    const cachedRaw = await getCached<{ keywords: KeywordIntersectionRow[]; totalCount: number }>(cacheKey);
     if (cachedRaw && cachedRaw.keywords?.length > 0) {
-      console.log("[INTERSECTION] Serving from cache:", cachedRaw.keywords.length, "keywords");
       return cachedRaw;
     }
 
-    console.log("[INTERSECTION] Cache miss, calling DataForSEO...");
     const intersectionType =
       data.mode === "gaps"
         ? ("target2_not_target1" as const)

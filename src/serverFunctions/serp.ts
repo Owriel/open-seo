@@ -183,13 +183,11 @@ export const analyzeSerpResults = createServerFn({ method: "POST" })
       languageCode: data.languageCode,
     });
 
-    const cachedRaw = await getCached(cacheKey) as SerpAnalysisResult | null;
+    const cachedRaw = await getCached<SerpAnalysisResult>(cacheKey);
     if (cachedRaw && cachedRaw.topResults?.length > 0) {
-      console.log("[SERP] Serving from cache:", cachedRaw.topResults.length, "results");
       return cachedRaw;
     }
 
-    console.log("[SERP] Cache miss, calling DataForSEO...");
     const serpItems = await fetchLiveSerpItemsRaw(
       data.keyword,
       data.locationCode,
@@ -226,7 +224,7 @@ export const analyzeSerpResults = createServerFn({ method: "POST" })
     }
     const dominantDomains: SerpDominantDomain[] = [...domainCounts.entries()]
       .map(([domain, count]) => ({ domain, count }))
-      .sort((a, b) => b.count - a.count)
+      .toSorted((a, b) => b.count - a.count)
       .slice(0, 10);
 
     // 4. Análisis de intent

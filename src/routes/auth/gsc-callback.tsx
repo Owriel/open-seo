@@ -27,7 +27,7 @@ function GscCallbackPage() {
       .then((result) => {
         if (result.success) {
           // Redirigir a la página de oportunidades del proyecto
-          navigate({
+          void navigate({
             to: "/p/$projectId/opportunities",
             params: { projectId },
             search: { gsc_connected: "1" },

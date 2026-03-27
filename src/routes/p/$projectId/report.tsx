@@ -76,7 +76,7 @@ function ReportPage() {
     } catch { /* silencioso */ }
   }, [projectId]);
 
-  useEffect(() => { loadReports(); }, [loadReports]);
+  useEffect(() => { void loadReports(); }, [loadReports]);
 
   const reportMutation = useMutation({
     mutationFn: () =>
@@ -94,14 +94,14 @@ function ReportPage() {
       setReport(data);
       setPublicUrl(data.publicId ? `${window.location.origin}/report/${data.publicId}` : null);
       toast.success("Informe generado");
-      loadReports();
+      void loadReports();
     },
     onError: (err) => toast.error(getStandardErrorMessage(err, "Error generando informe")),
   });
 
   const deleteMutation = useMutation({
     mutationFn: (reportId: string) => deleteReport({ data: { projectId, reportId } }),
-    onSuccess: () => { toast.success("Informe eliminado"); loadReports(); },
+    onSuccess: () => { toast.success("Informe eliminado"); void loadReports(); },
   });
 
   const publicLinkMutation = useMutation({
@@ -282,7 +282,7 @@ function ReportPage() {
             <table className="table table-xs w-full">
               <thead><tr className="text-xs text-base-content/60"><th>Pos</th><th>Negocio</th><th className="text-right">Rating</th><th className="text-right">Reseñas</th></tr></thead>
               <tbody>
-                {report.local!.localPackResults.map((r, i) => (
+                {report.local.localPackResults.map((r, i) => (
                   <tr key={i} className={`hover:bg-base-200/30 ${r.position === report.local!.ourPosition ? "bg-primary/10 font-semibold" : ""}`}>
                     <td className="tabular-nums">{r.position}</td>
                     <td className="max-w-[250px] truncate">{r.title}</td>
@@ -293,14 +293,14 @@ function ReportPage() {
               </tbody>
             </table>
           </div>
-          {report.local!.localKeywords.length > 0 && (
+          {report.local.localKeywords.length > 0 && (
             <>
               <h4 className="text-xs font-semibold text-base-content/60">Keywords locales</h4>
               <div className="overflow-x-auto">
                 <table className="table table-xs w-full">
                   <thead><tr className="text-xs text-base-content/60"><th>Keyword</th><th className="text-right">Volumen</th><th className="text-right">KD</th></tr></thead>
                   <tbody>
-                    {report.local!.localKeywords.map((kw, i) => (
+                    {report.local.localKeywords.map((kw, i) => (
                       <tr key={i} className="hover:bg-base-200/30">
                         <td>{kw.keyword}</td>
                         <td className="text-right tabular-nums">{formatNumber(kw.searchVolume)}</td>
@@ -346,7 +346,7 @@ function ReportPage() {
           <table className="table table-xs w-full">
             <thead><tr className="text-xs text-base-content/60"><th>Variante</th><th>Idiomas</th></tr></thead>
             <tbody>
-              {report.gbp!.variants.map((v, i) => (
+              {report.gbp.variants.map((v, i) => (
                 <tr key={i} className="hover:bg-base-200/30">
                   <td>{v.name}</td>
                   <td><div className="flex gap-1 flex-wrap">{v.languages.map((l) => <span key={l.code} className="badge badge-xs badge-ghost">{l.name}</span>)}</div></td>
@@ -447,7 +447,7 @@ function ReportPage() {
                   <>
                     <div className="flex items-center gap-1 bg-base-200 rounded-lg px-3 py-1.5 text-sm">
                       <span className="truncate max-w-[240px]">{publicUrl}</span>
-                      <button className="btn btn-ghost btn-xs" onClick={() => { navigator.clipboard.writeText(publicUrl); toast.success("URL copiada"); }}>
+                      <button className="btn btn-ghost btn-xs" onClick={() => { void navigator.clipboard.writeText(publicUrl); toast.success("URL copiada"); }}>
                         <Copy className="size-3" />
                       </button>
                     </div>

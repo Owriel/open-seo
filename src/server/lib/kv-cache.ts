@@ -52,13 +52,23 @@ export function buildCacheKey(
 }
 
 /**
+ * Helper para parsear JSON desde un string con un tipo esperado.
+ * Centraliza el unsafe cast en un único lugar.
+ */
+export function parseJson<T>(raw: string): T {
+  // eslint-disable-next-line typescript/no-unsafe-type-assertion
+  return JSON.parse(raw) as T;
+}
+
+/**
  * Get a cached JSON value from KV. Returns null on miss.
  */
-export async function getCached(key: string): Promise<unknown> {
+export async function getCached<T = unknown>(key: string): Promise<T | null> {
   const value = await env.KV.get(key, "text");
   if (value === null) return null;
   const parsed = jsonUnknownCodec.safeParse(value);
-  return parsed.success ? parsed.data : null;
+  // eslint-disable-next-line typescript/no-unsafe-type-assertion
+  return parsed.success ? (parsed.data as T) : null;
 }
 
 /**
@@ -77,7 +87,7 @@ export async function setCached<T>(
   });
 
   // Store metadata in D1
-  const prefix = key.split(":")[0] + (key.includes(":") ? ":" + key.split(":")[1]?.split(":")[0] : "");
+  const _prefix = key.split(":")[0] + (key.includes(":") ? ":" + key.split(":")[1]?.split(":")[0] : "");
   const categoryPrefix = key.substring(0, key.lastIndexOf(":"));
   const label = meta?.label ?? CATEGORY_LABELS[categoryPrefix] ?? categoryPrefix;
   const expiresAt = new Date(Date.now() + ttlSeconds * 1000).toISOString();

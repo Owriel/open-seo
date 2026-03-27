@@ -8,7 +8,6 @@ import {
   Star,
   Phone,
   Globe,
-  ExternalLink,
   FileDown,
   Sparkles,
   MessageSquare,
@@ -35,7 +34,6 @@ import {
   getLocalKeywordSuggestions,
   getCityKeywordSuggestions,
 } from "@/serverFunctions/local";
-import { getStandardErrorMessage } from "@/client/lib/error-messages";
 import {
   LOCATIONS,
   getLanguageCode,
@@ -676,7 +674,7 @@ function LocalPage() {
     enabled: !!searchTrigger && !!detectedCity && !!baseKeyword,
   });
 
-  const packResults = packQuery.data?.results ?? [];
+  const packResults = useMemo(() => packQuery.data?.results ?? [], [packQuery.data?.results]);
   const keywordSuggestions = suggestionsQuery.data?.keywords ?? [];
   const cityKeywords = cityKeywordsQuery.data?.keywords ?? [];
   const cityFound = cityKeywordsQuery.data?.cityFound ?? null;
@@ -737,7 +735,7 @@ function LocalPage() {
             packResults.filter((r) => r.reviewCount != null).length,
         )
       : null;
-  const claimed = packResults.filter((r) => r.isClaimed === true).length;
+  const _claimed = packResults.filter((r) => r.isClaimed === true).length;
   const withWeb = packResults.filter((r) => r.url).length;
 
   // Competitive analysis data
@@ -750,7 +748,7 @@ function LocalPage() {
     const totalReviews = withReviews.reduce((s, r) => s + (r.reviewCount ?? 0), 0);
     const avgReviewCount = withReviews.length > 0 ? Math.round(totalReviews / withReviews.length) : 0;
     const medianReviews = (() => {
-      const sorted = withReviews.map((r) => r.reviewCount ?? 0).sort((a, b) => a - b);
+      const sorted = withReviews.map((r) => r.reviewCount ?? 0).toSorted((a, b) => a - b);
       if (sorted.length === 0) return 0;
       const mid = Math.floor(sorted.length / 2);
       return sorted.length % 2 !== 0 ? sorted[mid] : Math.round((sorted[mid - 1] + sorted[mid]) / 2);
@@ -768,13 +766,13 @@ function LocalPage() {
     // --- Categorías con % ---
     const catCounts: Record<string, number> = {};
     for (const r of packResults) {
-      const all = [r.category, ...r.additionalCategories].filter(Boolean) as string[];
+      const all = [r.category, ...r.additionalCategories].filter((c): c is string => !!c);
       for (const c of all) {
         catCounts[c] = (catCounts[c] ?? 0) + 1;
       }
     }
     const categoriesRanked = Object.entries(catCounts)
-      .sort((a, b) => b[1] - a[1])
+      .toSorted((a, b) => b[1] - a[1])
       .map(([name, count]) => ({ name, count, pct: Math.round((count / total) * 100) }));
 
     // --- Fotos ---
@@ -799,7 +797,7 @@ function LocalPage() {
       if (r.priceLevel) priceCounts[r.priceLevel] = (priceCounts[r.priceLevel] ?? 0) + 1;
     }
     const priceDistribution = Object.entries(priceCounts)
-      .sort((a, b) => b[1] - a[1])
+      .toSorted((a, b) => b[1] - a[1])
       .map(([level, count]) => ({ level, label: PRICE_LABELS[level] ?? level, count, pct: Math.round((count / total) * 100) }));
 
     // --- Horarios ---
@@ -839,7 +837,7 @@ function LocalPage() {
       }
     }
     const topJustifications = Object.entries(justCounts)
-      .sort((a, b) => b[1] - a[1])
+      .toSorted((a, b) => b[1] - a[1])
       .slice(0, 10)
       .map(([text, count]) => ({ text, count }));
 

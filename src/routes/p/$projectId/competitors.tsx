@@ -1,12 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 import { useMutation } from "@tanstack/react-query";
 import {
   Search,
   Globe,
-  TrendingUp,
-  TrendingDown,
   FileDown,
   ArrowRightLeft,
   Users,
@@ -16,10 +14,8 @@ import {
 } from "lucide-react";
 import { findCompetitors, getKeywordIntersection } from "@/serverFunctions/competitors";
 import { saveKeywords } from "@/serverFunctions/keywords";
-import type { CompetitorRow, KeywordIntersectionRow } from "@/types/competitors";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
 import {
-  LOCATIONS,
   getLanguageCode,
   formatNumber,
   csvEscape,

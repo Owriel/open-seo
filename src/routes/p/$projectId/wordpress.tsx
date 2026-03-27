@@ -57,7 +57,7 @@ function WordPressPage() {
   }, [projectId]);
 
   useEffect(() => {
-    loadConfig();
+    void loadConfig();
   }, [loadConfig]);
 
   // Mutations
@@ -69,7 +69,7 @@ function WordPressPage() {
     onSuccess: () => {
       toast.success("Configuración guardada");
       setWpAppPassword("");
-      loadConfig();
+      void loadConfig();
     },
     onError: (err) => toast.error(getStandardErrorMessage(err, "Error al guardar")),
   });
@@ -290,7 +290,7 @@ function WordPressPage() {
                     <select
                       className="select select-bordered select-sm w-full max-w-xs"
                       value={status}
-                      onChange={(e) => setStatus(e.target.value as "draft" | "publish")}
+                      onChange={(e) => { if (e.target.value === "draft" || e.target.value === "publish") setStatus(e.target.value); }}
                     >
                       <option value="draft">Borrador</option>
                       <option value="publish">Publicar</option>

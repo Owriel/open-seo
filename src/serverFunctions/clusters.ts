@@ -13,6 +13,7 @@ import {
 import {
   buildCacheKey,
   getCached,
+  parseJson,
   setCached,
   CACHE_TTL_SECONDS,
 } from "@/server/lib/kv-cache";
@@ -36,7 +37,7 @@ async function loadIndex(projectId: string): Promise<string[]> {
   const raw = await env.KV.get(indexKey(projectId), "text");
   if (!raw) return [];
   try {
-    return JSON.parse(raw) as string[];
+    return parseJson<string[]>(raw);
   } catch {
     return [];
   }
@@ -57,13 +58,10 @@ export const generateClusters = createServerFn({ method: "POST" })
       languageCode: data.languageCode,
     });
 
-    const cachedRaw = await getCached(cacheKey) as { clusters: ClusterGroup[]; pillarKeyword: string } | null;
+    const cachedRaw = await getCached<{ clusters: ClusterGroup[]; pillarKeyword: string }>(cacheKey);
     if (cachedRaw && cachedRaw.clusters?.length > 0) {
-      console.log("[CLUSTERS] Serving from cache:", cachedRaw.clusters.length, "clusters");
       return cachedRaw;
     }
-
-    console.log("[CLUSTERS] Cache miss, calling DataForSEO...");
 
     // Llamar en paralelo a suggestions + related
     const [suggestionsRaw, relatedRaw] = await Promise.all([
@@ -182,7 +180,7 @@ export const getClusterPlans = createServerFn({ method: "POST" })
       const raw = await env.KV.get(planKey(data.projectId, id), "text");
       if (raw) {
         try {
-          plans.push(JSON.parse(raw) as ClusterPlan);
+          plans.push(parseJson<ClusterPlan>(raw));
         } catch {
           // Skip corruptos
         }

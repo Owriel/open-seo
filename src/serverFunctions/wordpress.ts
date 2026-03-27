@@ -8,6 +8,7 @@ import {
 } from "@/types/schemas/wordpress";
 import { env } from "cloudflare:workers";
 import type { WpConfig, WpPublishResult } from "@/types/wordpress";
+import { parseJson } from "@/server/lib/kv-cache";
 
 // KV key para config WP de un proyecto
 function configKey(projectId: string) {
@@ -26,7 +27,7 @@ async function loadConfig(projectId: string): Promise<WpConfigInternal | null> {
   const raw = await env.KV.get(configKey(projectId), "text");
   if (!raw) return null;
   try {
-    return JSON.parse(raw) as WpConfigInternal;
+    return parseJson<WpConfigInternal>(raw);
   } catch {
     return null;
   }
@@ -97,7 +98,7 @@ export const testWpConnection = createServerFn({ method: "POST" })
         };
       }
 
-      const user = await res.json() as { name?: string };
+      const user: { name?: string } = await res.json();
       return {
         success: true,
         message: `Conectado como ${user.name ?? config.wpUser}`,
@@ -138,12 +139,12 @@ export const publishToWordPress = createServerFn({ method: "POST" })
       throw new Error(`WordPress API error ${res.status}: ${text.slice(0, 300)}`);
     }
 
-    const post = await res.json() as {
+    const post: {
       id: number;
       link: string;
       status: string;
       _links?: { edit?: Array<{ href: string }> };
-    };
+    } = await res.json();
 
     return {
       postId: post.id,

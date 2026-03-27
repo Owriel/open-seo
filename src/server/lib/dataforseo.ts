@@ -47,10 +47,7 @@ function createAuthenticatedFetch() {
       ...init,
       headers,
     };
-    return fetch(url, newInit).then((res) => {
-      console.log("[DATAFORSEO] Response status:", res.status);
-      return res;
-    });
+    return fetch(url, newInit);
   };
 }
 
@@ -225,8 +222,6 @@ export async function fetchGoogleAdsKeywordsForKeywordsRaw(
     },
   ];
 
-  console.log("[GOOGLE-ADS-KW] Request:", JSON.stringify(requestBody));
-
   const response = await fetch(
     `${API_BASE}/v3/keywords_data/google_ads/keywords_for_keywords/live`,
     {
@@ -239,15 +234,11 @@ export async function fetchGoogleAdsKeywordsForKeywordsRaw(
     },
   );
 
-  console.log("[GOOGLE-ADS-KW] Response status:", response.status);
-
   if (!response.ok) {
-    const errorText = await response.text();
-    console.log("[GOOGLE-ADS-KW] Error response:", errorText);
     throw new AppError("INTERNAL_ERROR", `DataForSEO Google Ads API error: ${response.status}`);
   }
 
-  const data = (await response.json()) as {
+  const data: {
     status_code?: number;
     status_message?: string;
     tasks?: Array<{
@@ -256,15 +247,11 @@ export async function fetchGoogleAdsKeywordsForKeywordsRaw(
       result_count?: number;
       result?: GoogleAdsKeywordItem[];
     }>;
-  };
-
-  console.log("[GOOGLE-ADS-KW] Response status_code:", data.status_code, "message:", data.status_message);
+  } = await response.json();
 
   const task = data.tasks?.[0];
-  console.log("[GOOGLE-ADS-KW] Task status:", task?.status_code, "result_count:", task?.result_count);
 
   if (!task || task.status_code !== 20000) {
-    console.log("[GOOGLE-ADS-KW] Task failed:", task?.status_message);
     throw new AppError(
       "INTERNAL_ERROR",
       `DataForSEO task error: ${task?.status_message ?? "unknown"}`,
@@ -273,10 +260,7 @@ export async function fetchGoogleAdsKeywordsForKeywordsRaw(
 
   // Google Ads keywords_for_keywords returns items directly in result[],
   // NOT in result[0].items like Labs API
-  const items = task.result ?? [];
-  console.log("[GOOGLE-ADS-KW] Returning", items.length, "items");
-
-  return items;
+  return task.result ?? [];
 }
 
 /**
@@ -289,12 +273,7 @@ export async function lookupCityLocationCode(
 ): Promise<{ locationCode: number; locationName: string } | null> {
   const apiKey = env.DATAFORSEO_API_KEY;
 
-  console.log("[CITY-LOOKUP] Looking up city:", cityName, "country:", countryCode);
-
-  // DataForSEO locations endpoint — path-based with lowercase country code
-  // Format: /v3/keywords_data/google_ads/locations/{country_lowercase}
   const url = `${API_BASE}/v3/keywords_data/google_ads/locations/${countryCode.toLowerCase()}`;
-  console.log("[CITY-LOOKUP] Fetching:", url);
 
   const response = await fetch(url, {
     method: "GET",
@@ -303,18 +282,15 @@ export async function lookupCityLocationCode(
     },
   });
 
-  console.log("[CITY-LOOKUP] Response status:", response.status);
-
-  if (!response.ok) {
-    console.log("[CITY-LOOKUP] Response not OK:", response.status);
-    return null;
-  }
+  if (!response.ok) return null;
 
   const rawData = await response.json();
-  console.log("[CITY-LOOKUP] Raw response keys:", Object.keys(rawData as object));
 
   return parseCityFromResponse(rawData, cityName, countryCode);
 }
+
+const normalize = (s: string) =>
+  s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
 
 function parseCityFromResponse(
   data: unknown,
@@ -328,6 +304,7 @@ function parseCityFromResponse(
     country_iso_code: string;
   };
 
+  // eslint-disable-next-line typescript/no-unsafe-type-assertion
   const typedData = data as {
     tasks?: Array<{ result?: LocationItem[] }>;
     result?: LocationItem[];
@@ -337,56 +314,38 @@ function parseCityFromResponse(
   // - tasks[0].result (standard DataForSEO format)
   // - result (some GET endpoints return this directly)
   const results = typedData.tasks?.[0]?.result ?? typedData.result ?? [];
-  console.log("[CITY-LOOKUP] Parsed results count:", results.length, "from tasks:", !!typedData.tasks, "from result:", !!typedData.result);
-  console.log("[CITY-LOOKUP] Total locations returned:", results.length);
 
-  // Filter to only cities in the target country
   const cities = results.filter(
     (r) => r.location_type === "City" &&
       r.country_iso_code?.toUpperCase() === countryCode.toUpperCase(),
   );
-  console.log("[CITY-LOOKUP] Cities in", countryCode, ":", cities.length);
-
-  // Normalize for accent-insensitive matching
-  const normalize = (s: string) =>
-    s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
 
   const cityNorm = normalize(cityName);
-  console.log("[CITY-LOOKUP] Searching for normalized city:", cityNorm);
 
-  // Log first few city names for debugging
-  if (cities.length > 0) {
-    console.log("[CITY-LOOKUP] Sample cities:", cities.slice(0, 5).map((c) => c.location_name));
-  }
-
-  // First try: exact city match
+  // Exact match
   const exactMatch = cities.find(
     (r) => normalize(r.location_name.split(",")[0]) === cityNorm,
   );
   if (exactMatch) {
-    console.log("[CITY-LOOKUP] Exact match found:", exactMatch.location_name, "code:", exactMatch.location_code);
     return { locationCode: exactMatch.location_code, locationName: exactMatch.location_name };
   }
 
-  // Second try: starts-with match (e.g., "castellon" matches "Castellon de la Plana")
+  // Starts-with match (ej: "castellon" → "Castellon de la Plana")
   const startsWithMatch = cities.find(
     (r) => normalize(r.location_name.split(",")[0]).startsWith(cityNorm),
   );
   if (startsWithMatch) {
-    console.log("[CITY-LOOKUP] Starts-with match:", startsWithMatch.location_name, "code:", startsWithMatch.location_code);
     return { locationCode: startsWithMatch.location_code, locationName: startsWithMatch.location_name };
   }
 
-  // Third try: city name contains the search term
+  // Contains match
   const containsMatch = cities.find(
     (r) => normalize(r.location_name).includes(cityNorm),
   );
   if (containsMatch) {
-    console.log("[CITY-LOOKUP] Contains match:", containsMatch.location_name, "code:", containsMatch.location_code);
     return { locationCode: containsMatch.location_code, locationName: containsMatch.location_name };
   }
 
-  console.log("[CITY-LOOKUP] No match found for:", cityNorm);
   return null;
 }
 
@@ -588,8 +547,10 @@ export async function fetchCompetitorsDomainRaw(
   const response = await api.googleCompetitorsDomainLive([req]);
   const task = assertOk(response);
 
+  // eslint-disable-next-line typescript/no-unsafe-type-assertion
   const result = (task as { result?: Array<{ items?: unknown[] }> })
     .result?.[0];
+  // eslint-disable-next-line typescript/no-unsafe-type-assertion
   return (result?.items ?? []) as CompetitorDomainItem[];
 }
 
@@ -653,8 +614,10 @@ export async function fetchDomainIntersectionRaw(
   const response = await api.googleDomainIntersectionLive([req]);
   const task = assertOk(response);
 
+  // eslint-disable-next-line typescript/no-unsafe-type-assertion
   const result = (task as { result?: Array<{ items?: unknown[]; total_count?: number }> })
     .result?.[0];
+  // eslint-disable-next-line typescript/no-unsafe-type-assertion
   return (result?.items ?? []) as DomainIntersectionItem[];
 }
 
@@ -720,7 +683,9 @@ export async function fetchGoogleMapsResultsRaw(
   const response = await api.googleMapsLiveAdvanced([req]);
   const task = assertOk(response);
 
+  // eslint-disable-next-line typescript/no-unsafe-type-assertion
   const result = (task as { result?: Array<{ items?: unknown[] }> })
     .result?.[0];
+  // eslint-disable-next-line typescript/no-unsafe-type-assertion
   return (result?.items ?? []) as GoogleMapsItem[];
 }

@@ -171,7 +171,7 @@ export function detectCannibalization(
   }
 
   // Ordenar por número de URLs (más canibalización primero)
-  return groups.sort((a, b) => b.urls.length - a.urls.length);
+  return groups.toSorted((a, b) => b.urls.length - a.urls.length);
 }
 
 // ---------------------------------------------------------------------------

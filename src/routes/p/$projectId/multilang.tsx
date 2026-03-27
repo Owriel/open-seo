@@ -11,8 +11,6 @@ import {
   ChevronDown,
   ChevronUp,
   AlertCircle,
-  CheckCircle2,
-  Clock,
   Loader2,
   X,
   Tag,
@@ -107,7 +105,7 @@ function MultilangPage() {
   const [placesResults, setPlacesResults] = useState<PlaceSearchResult[]>([]);
   const [placesSearching, setPlacesSearching] = useState(false);
   const [showBulkImport, setShowBulkImport] = useState(false);
-  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const _searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ── Carga inicial ──
   const loadData = useCallback(async () => {
@@ -121,7 +119,7 @@ function MultilangPage() {
   }, [projectId]);
 
   useEffect(() => {
-    loadData();
+    void loadData();
   }, [loadData]);
 
   // ── Buscador de Google Places ──
@@ -142,7 +140,7 @@ function MultilangPage() {
   const handlePlacesKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") {
       e.preventDefault();
-      handlePlacesSearch();
+      void handlePlacesSearch();
     }
   };
 
@@ -705,7 +703,7 @@ function MultilangPage() {
                   <span className="badge badge-sm badge-secondary">{count}</span>
                   <span
                     className="text-error hover:text-error/70 ml-1"
-                    onClick={(e) => { e.stopPropagation(); handleDeleteCategory(cat.id); }}
+                    onClick={(e) => { e.stopPropagation(); void handleDeleteCategory(cat.id); }}
                   >
                     <X className="size-3" />
                   </span>
@@ -738,7 +736,7 @@ function MultilangPage() {
                     placeholder="Nueva keyword..."
                     value={newKeyword}
                     onChange={(e) => setNewKeyword(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === "Enter") handleAddKeyword(cat.id); }}
+                    onKeyDown={(e) => { if (e.key === "Enter") void handleAddKeyword(cat.id); }}
                   />
                   <button className="btn btn-outline btn-sm" onClick={() => handleAddKeyword(cat.id)}>
                     Agregar
@@ -882,7 +880,7 @@ function MultilangPage() {
                   placeholder="Ej: Reformas"
                   value={catModalName}
                   onChange={(e) => setCatModalName(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter") handleCreateCategoryModal(); }}
+                  onKeyDown={(e) => { if (e.key === "Enter") void handleCreateCategoryModal(); }}
                   autoFocus
                 />
               </div>

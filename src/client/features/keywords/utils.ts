@@ -130,7 +130,7 @@ const STOP_WORDS = new Set([
 
 export function clusterKeywords<T extends { keyword: string; searchVolume: number | null; keywordDifficulty: number | null; cpc: number | null }>(
   rows: T[],
-  seedKeyword?: string,
+  _seedKeyword?: string,
 ): KeywordCluster[] {
   if (rows.length === 0) return [];
 
@@ -161,7 +161,7 @@ export function clusterKeywords<T extends { keyword: string; searchVolume: numbe
 
   const validBigrams = [...bigramCount.entries()]
     .filter(([, count]) => count >= 2)
-    .sort((a, b) => b[1] - a[1]);
+    .toSorted((a, b) => b[1] - a[1]);
 
   const assigned = new Set<string>();
   const clusters: KeywordCluster[] = [];

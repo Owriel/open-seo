@@ -248,8 +248,8 @@ function CacheManagementPage() {
             <tbody>
               {entries.map((entry) => {
                 const status = getStatus(entry.expiresAt);
-                const params = entry.paramsJson
-                  ? (JSON.parse(entry.paramsJson) as Record<string, unknown>)
+                const params: Record<string, unknown> | null = entry.paramsJson
+                  ? JSON.parse(entry.paramsJson)
                   : null;
 
                 return (
@@ -267,7 +267,7 @@ function CacheManagementPage() {
                       {params && (
                         <div className="text-xs text-base-content/50 mt-0.5">
                           {Object.entries(params)
-                            .map(([k, v]) => `${k}: ${v}`)
+                            .map(([k, v]) => `${k}: ${String(v)}`)
                             .join(" · ")}
                         </div>
                       )}
