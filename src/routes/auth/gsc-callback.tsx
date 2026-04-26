@@ -56,7 +56,9 @@ function GscCallbackPage() {
     <div className="flex items-center justify-center h-screen">
       <div className="text-center space-y-2">
         <div className="loading loading-spinner loading-lg" />
-        <p className="text-sm text-base-content/60">Conectando Google Search Console...</p>
+        <p className="text-sm text-base-content/60">
+          Conectando Google Search Console...
+        </p>
       </div>
     </div>
   );

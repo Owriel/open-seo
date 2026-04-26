@@ -20,8 +20,8 @@ import { getSeoApiKeyStatus } from "@/serverFunctions/config";
 import {
   AppContent,
   MissingSeoSetupModal,
+  MobileHeader,
   SeoApiStatusBanners,
-  TopNav,
 } from "@/client/layout/AppShell";
 
 const DATAFORSEO_HELP_PATH = "/help/dataforseo-api-key";
@@ -144,24 +144,25 @@ function AppLayout() {
 
   return (
     <div className="flex flex-col h-[100dvh] bg-base-200">
-      <TopNav
+      {/* Header minimal solo en mobile: hamburguesa + logo */}
+      <MobileHeader
         drawerOpen={drawerOpen}
-        projectId={projectId}
-        pathname={location.pathname}
         onOpenDrawer={() => setDrawerOpen(true)}
       />
 
-      <SeoApiStatusBanners
-        helpPath={DATAFORSEO_HELP_PATH}
-        shouldShowSeoApiWarning={shouldShowSeoApiWarning}
-        seoApiKeyStatusError={seoApiKeyStatusError}
-      />
-
+      {/* Layout principal: sidebar izquierda (desktop) + main con banners + Outlet */}
       <AppContent
         drawerOpen={drawerOpen}
         pathname={location.pathname}
         projectId={projectId}
         onCloseDrawer={() => setDrawerOpen(false)}
+        banners={
+          <SeoApiStatusBanners
+            helpPath={DATAFORSEO_HELP_PATH}
+            shouldShowSeoApiWarning={shouldShowSeoApiWarning}
+            seoApiKeyStatusError={seoApiKeyStatusError}
+          />
+        }
       />
 
       <MissingSeoSetupModal

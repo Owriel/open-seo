@@ -52,13 +52,13 @@ export function FilterRangeInputs({
         <CompactRangeInput
           form={form}
           name={minName}
-          placeholder="Min"
+          placeholder="Mín."
           step={step}
         />
         <CompactRangeInput
           form={form}
           name={maxName}
-          placeholder="Max"
+          placeholder="Máx."
           step={step}
         />
       </div>
@@ -103,11 +103,11 @@ export function EmptyFilterResults({
   return (
     <div className="h-full flex flex-col items-center justify-center text-center px-4 text-base-content/50 gap-3">
       <p className="text-sm font-medium">
-        No keywords match your current filters.
+        Ninguna keyword coincide con los filtros actuales.
       </p>
       {activeFilterCount > 0 ? (
         <button className="btn btn-ghost btn-sm" onClick={resetFilters}>
-          Clear filters
+          Limpiar filtros
         </button>
       ) : null}
     </div>

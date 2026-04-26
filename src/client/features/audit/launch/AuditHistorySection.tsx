@@ -1,6 +1,8 @@
 import { MoreHorizontal, ScanSearch, Trash2 } from "lucide-react";
+import { useParams } from "@tanstack/react-router";
 import type { getAuditHistory } from "@/serverFunctions/audit";
 import { formatDate, StatusBadge } from "@/client/features/audit/shared";
+import { useProjectContext } from "@/client/hooks/useProjectContext";
 
 export function AuditHistorySection({
   history,
@@ -13,12 +15,27 @@ export function AuditHistorySection({
   onView: (auditId: string) => void;
   onDelete: (auditId: string) => void;
 }) {
+  const { projectId } = useParams({ from: "/p/$projectId/audit/" });
+  const { project } = useProjectContext(projectId);
+
   if (history.length === 0 && !isLoading) {
+    const projectDomain = project?.domain?.trim();
     return (
       <div className="flex items-center justify-center py-16">
-        <div className="text-center text-base-content/40 space-y-3">
-          <ScanSearch className="size-12 mx-auto opacity-30" />
+        <div className="text-center text-base-content/60 space-y-3 max-w-md">
+          <ScanSearch className="size-12 mx-auto opacity-40 text-primary" />
           <p className="text-lg font-medium">No audits yet</p>
+          {projectDomain ? (
+            <p className="text-sm">
+              Realiza tu primera auditoría de{" "}
+              <span className="font-mono text-primary">{projectDomain}</span>.
+              Crawlearemos hasta 50 páginas por defecto (configurable arriba).
+            </p>
+          ) : (
+            <p className="text-sm">
+              Pega un dominio o URL en el formulario de arriba para empezar.
+            </p>
+          )}
         </div>
       </div>
     );

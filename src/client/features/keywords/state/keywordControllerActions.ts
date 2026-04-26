@@ -115,14 +115,15 @@ export function useSearchActions(params: SearchActionParams) {
       .filter(Boolean);
 
     if (keywords.length === 0) {
-      setSearchInputError("Please enter at least one keyword.");
+      setSearchInputError("Introduce al menos una keyword.");
       return;
     }
 
     setSearchInputError(null);
     setSearchParams({
       q: inputKeyword,
-      loc: activeLocation === 2840 ? undefined : activeLocation,
+      // 2724 = España (default); no persistir loc en la URL si coincide.
+      loc: activeLocation === 2724 ? undefined : activeLocation,
       kLimit: activeResultLimit === 150 ? undefined : activeResultLimit,
       mode: activeMode === "auto" ? undefined : activeMode,
     });
@@ -176,7 +177,7 @@ export function useSaveAndExportActions(params: SaveExportActionParams) {
 
   const handleSaveKeywords = () => {
     if (selectedRows.size === 0) {
-      toast.error("Select at least one keyword first");
+      toast.error("Selecciona al menos una keyword");
       return;
     }
     setShowSaveDialog(true);
@@ -192,11 +193,17 @@ export function useSaveAndExportActions(params: SaveExportActionParams) {
       },
       {
         onSuccess: () => {
-          toast.success(`Saved ${selectedRows.size} keywords`);
+          toast.success(
+            selectedRows.size === 1
+              ? "1 keyword guardada"
+              : `${selectedRows.size} keywords guardadas`,
+          );
           setShowSaveDialog(false);
         },
         onError: (error: unknown) => {
-          toast.error(getStandardErrorMessage(error, "Save failed."));
+          toast.error(
+            getStandardErrorMessage(error, "No se pudo guardar las keywords."),
+          );
         },
       },
     );
@@ -208,7 +215,7 @@ export function useSaveAndExportActions(params: SaveExportActionParams) {
         ? filteredRows.filter((row) => selectedRows.has(row.keyword))
         : filteredRows;
     if (source.length === 0) {
-      toast.error("No data to export");
+      toast.error("No hay datos para exportar");
       return;
     }
     const headers = [

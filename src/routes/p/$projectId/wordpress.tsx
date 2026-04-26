@@ -33,14 +33,18 @@ function WordPressPage() {
   const [wpUser, setWpUser] = useState("");
   const [wpAppPassword, setWpAppPassword] = useState("");
   const [savedConfig, setSavedConfig] = useState<WpConfig | null>(null);
-  const [connectionStatus, setConnectionStatus] = useState<"idle" | "success" | "error">("idle");
+  const [connectionStatus, setConnectionStatus] = useState<
+    "idle" | "success" | "error"
+  >("idle");
   const [connectionMessage, setConnectionMessage] = useState("");
 
   // Publish state
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [status, setStatus] = useState<"draft" | "publish">("draft");
-  const [lastPublished, setLastPublished] = useState<WpPublishResult | null>(null);
+  const [lastPublished, setLastPublished] = useState<WpPublishResult | null>(
+    null,
+  );
 
   // Cargar config guardada
   const loadConfig = useCallback(async () => {
@@ -64,14 +68,20 @@ function WordPressPage() {
   const saveMutation = useMutation({
     mutationFn: () =>
       saveWpConfig({
-        data: { projectId, wpUrl: wpUrl.trim(), wpUser: wpUser.trim(), wpAppPassword },
+        data: {
+          projectId,
+          wpUrl: wpUrl.trim(),
+          wpUser: wpUser.trim(),
+          wpAppPassword,
+        },
       }),
     onSuccess: () => {
       toast.success("Configuración guardada");
       setWpAppPassword("");
       void loadConfig();
     },
-    onError: (err) => toast.error(getStandardErrorMessage(err, "Error al guardar")),
+    onError: (err) =>
+      toast.error(getStandardErrorMessage(err, "Error al guardar")),
   });
 
   const testMutation = useMutation({
@@ -98,11 +108,14 @@ function WordPressPage() {
       }),
     onSuccess: (result) => {
       setLastPublished(result);
-      toast.success(`Post ${result.status === "draft" ? "borrador" : "publicado"} creado (#${result.postId})`);
+      toast.success(
+        `Post ${result.status === "draft" ? "borrador" : "publicado"} creado (#${result.postId})`,
+      );
       setTitle("");
       setContent("");
     },
-    onError: (err) => toast.error(getStandardErrorMessage(err, "Error al publicar")),
+    onError: (err) =>
+      toast.error(getStandardErrorMessage(err, "Error al publicar")),
   });
 
   const handleSaveConfig = (e: React.FormEvent) => {
@@ -172,13 +185,17 @@ function WordPressPage() {
                   <div className="mb-4 p-3 bg-base-200/50 rounded-lg text-sm">
                     <span className="text-base-content/60">Configurado:</span>{" "}
                     <span className="font-medium">{savedConfig.wpUrl}</span>
-                    <span className="text-base-content/40 ml-2">({savedConfig.wpUser})</span>
+                    <span className="text-base-content/40 ml-2">
+                      ({savedConfig.wpUser})
+                    </span>
                   </div>
                 )}
 
                 <form className="space-y-3" onSubmit={handleSaveConfig}>
                   <div>
-                    <label className="label label-text text-xs">URL de WordPress</label>
+                    <label className="label label-text text-xs">
+                      URL de WordPress
+                    </label>
                     <input
                       className="input input-bordered input-sm w-full"
                       placeholder="https://tudominio.com"
@@ -196,16 +213,23 @@ function WordPressPage() {
                     />
                   </div>
                   <div>
-                    <label className="label label-text text-xs">Application Password</label>
+                    <label className="label label-text text-xs">
+                      Application Password
+                    </label>
                     <input
                       type="password"
                       className="input input-bordered input-sm w-full"
-                      placeholder={savedConfig?.hasPassword ? "••••••••••• (guardada)" : "xxxx xxxx xxxx xxxx"}
+                      placeholder={
+                        savedConfig?.hasPassword
+                          ? "••••••••••• (guardada)"
+                          : "xxxx xxxx xxxx xxxx"
+                      }
                       value={wpAppPassword}
                       onChange={(e) => setWpAppPassword(e.target.value)}
                     />
                     <p className="text-xs text-base-content/40 mt-1">
-                      Genérala en WordPress &gt; Usuarios &gt; Tu perfil &gt; Application Passwords
+                      Genérala en WordPress &gt; Usuarios &gt; Tu perfil &gt;
+                      Application Passwords
                     </p>
                   </div>
 
@@ -215,12 +239,16 @@ function WordPressPage() {
                       className="btn btn-primary btn-sm"
                       disabled={saveMutation.isPending}
                     >
-                      {saveMutation.isPending ? "Guardando..." : "Guardar configuración"}
+                      {saveMutation.isPending
+                        ? "Guardando..."
+                        : "Guardar configuración"}
                     </button>
                     <button
                       type="button"
                       className="btn btn-ghost btn-sm"
-                      disabled={!savedConfig?.hasPassword || testMutation.isPending}
+                      disabled={
+                        !savedConfig?.hasPassword || testMutation.isPending
+                      }
                       onClick={() => testMutation.mutate()}
                     >
                       {testMutation.isPending ? (
@@ -262,13 +290,16 @@ function WordPressPage() {
 
                 {!savedConfig?.hasPassword && (
                   <div className="mb-4 p-3 bg-warning/10 text-warning rounded-lg text-sm">
-                    Configura tu WordPress primero en la pestaña de Configuración.
+                    Configura tu WordPress primero en la pestaña de
+                    Configuración.
                   </div>
                 )}
 
                 <form className="space-y-3" onSubmit={handlePublish}>
                   <div>
-                    <label className="label label-text text-xs">Título del post</label>
+                    <label className="label label-text text-xs">
+                      Título del post
+                    </label>
                     <input
                       className="input input-bordered input-sm w-full"
                       placeholder="Título del artículo"
@@ -277,7 +308,9 @@ function WordPressPage() {
                     />
                   </div>
                   <div>
-                    <label className="label label-text text-xs">Contenido (HTML)</label>
+                    <label className="label label-text text-xs">
+                      Contenido (HTML)
+                    </label>
                     <textarea
                       className="textarea textarea-bordered w-full h-48 text-sm"
                       placeholder="<h2>Sección 1</h2>&#10;<p>Contenido del artículo...</p>"
@@ -290,7 +323,13 @@ function WordPressPage() {
                     <select
                       className="select select-bordered select-sm w-full max-w-xs"
                       value={status}
-                      onChange={(e) => { if (e.target.value === "draft" || e.target.value === "publish") setStatus(e.target.value); }}
+                      onChange={(e) => {
+                        if (
+                          e.target.value === "draft" ||
+                          e.target.value === "publish"
+                        )
+                          setStatus(e.target.value);
+                      }}
                     >
                       <option value="draft">Borrador</option>
                       <option value="publish">Publicar</option>
@@ -300,7 +339,9 @@ function WordPressPage() {
                   <button
                     type="submit"
                     className="btn btn-primary btn-sm mt-2"
-                    disabled={publishMutation.isPending || !savedConfig?.hasPassword}
+                    disabled={
+                      publishMutation.isPending || !savedConfig?.hasPassword
+                    }
                   >
                     {publishMutation.isPending ? (
                       <>
@@ -326,11 +367,14 @@ function WordPressPage() {
                   </h3>
                   <div className="text-sm space-y-1">
                     <p>
-                      <span className="text-base-content/60">ID:</span> #{lastPublished.postId}
+                      <span className="text-base-content/60">ID:</span> #
+                      {lastPublished.postId}
                     </p>
                     <p>
                       <span className="text-base-content/60">Estado:</span>{" "}
-                      {lastPublished.status === "draft" ? "Borrador" : "Publicado"}
+                      {lastPublished.status === "draft"
+                        ? "Borrador"
+                        : "Publicado"}
                     </p>
                     <div className="flex gap-2 mt-2">
                       <a

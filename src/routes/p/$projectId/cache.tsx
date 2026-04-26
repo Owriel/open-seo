@@ -71,9 +71,12 @@ function CacheManagementPage() {
   const getStatus = (expiresAt: string) => {
     const expires = new Date(expiresAt);
     const daysLeft = Math.ceil((expires.getTime() - now.getTime()) / 86400000);
-    if (daysLeft <= 0) return { label: "Expirada", color: "badge-error", daysLeft: 0 };
-    if (daysLeft <= 3) return { label: `${daysLeft}d`, color: "badge-warning", daysLeft };
-    if (daysLeft <= 7) return { label: `${daysLeft}d`, color: "badge-info", daysLeft };
+    if (daysLeft <= 0)
+      return { label: "Expirada", color: "badge-error", daysLeft: 0 };
+    if (daysLeft <= 3)
+      return { label: `${daysLeft}d`, color: "badge-warning", daysLeft };
+    if (daysLeft <= 7)
+      return { label: `${daysLeft}d`, color: "badge-info", daysLeft };
     return { label: `${daysLeft}d`, color: "badge-success", daysLeft };
   };
 
@@ -95,7 +98,9 @@ function CacheManagementPage() {
   };
 
   // Stats
-  const expiringSoon = entries.filter((e) => getStatus(e.expiresAt).daysLeft <= 3).length;
+  const expiringSoon = entries.filter(
+    (e) => getStatus(e.expiresAt).daysLeft <= 3,
+  ).length;
   const totalEntries = entries.length;
 
   if (isLoading) {
@@ -116,13 +121,11 @@ function CacheManagementPage() {
             Gestión de Caché
           </h1>
           <p className="text-base-content/60 text-sm mt-1">
-            Los datos de DataForSEO se guardan 30 días. Al expirar, puedes ampliar o borrar.
+            Los datos de DataForSEO se guardan 30 días. Al expirar, puedes
+            ampliar o borrar.
           </p>
         </div>
-        <button
-          className="btn btn-ghost btn-sm"
-          onClick={() => void refetch()}
-        >
+        <button className="btn btn-ghost btn-sm" onClick={() => void refetch()}>
           <RefreshCw className="h-4 w-4" />
           Actualizar
         </button>
@@ -149,8 +152,9 @@ function CacheManagementPage() {
         <div className="alert alert-warning">
           <AlertTriangle className="h-5 w-5" />
           <span>
-            <strong>{expiringSoon}</strong> {expiringSoon === 1 ? "entrada expira" : "entradas expiran"} en los próximos 3 días.
-            ¿Quieres ampliar o borrar?
+            <strong>{expiringSoon}</strong>{" "}
+            {expiringSoon === 1 ? "entrada expira" : "entradas expiran"} en los
+            próximos 3 días. ¿Quieres ampliar o borrar?
           </span>
           <div className="flex gap-2">
             <button
@@ -248,9 +252,19 @@ function CacheManagementPage() {
             <tbody>
               {entries.map((entry) => {
                 const status = getStatus(entry.expiresAt);
-                const params: Record<string, unknown> | null = entry.paramsJson
+                // JSON.parse devuelve `any`. Validamos el shape para tratarlo
+                // como Record<string, unknown> de forma segura.
+                // eslint-disable-next-line typescript/no-unsafe-type-assertion, typescript/no-unsafe-assignment
+                const parsed: unknown = entry.paramsJson
                   ? JSON.parse(entry.paramsJson)
                   : null;
+                const params: Record<string, unknown> | null =
+                  parsed !== null &&
+                  typeof parsed === "object" &&
+                  !Array.isArray(parsed)
+                    ? // eslint-disable-next-line typescript/no-unsafe-type-assertion
+                      (parsed as Record<string, unknown>)
+                    : null;
 
                 return (
                   <tr key={entry.kvKey} className="hover">
@@ -296,7 +310,9 @@ function CacheManagementPage() {
                       </span>
                     </td>
                     <td className="text-center text-xs">
-                      {entry.extendedCount > 0 ? `${entry.extendedCount}×` : "—"}
+                      {entry.extendedCount > 0
+                        ? `${entry.extendedCount}×`
+                        : "—"}
                     </td>
                     <td>
                       <div className="flex gap-1">

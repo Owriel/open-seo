@@ -22,5 +22,9 @@ export const localCityKeywordSuggestionsSchema = z.object({
 });
 
 export type LocalPackSearchInput = z.infer<typeof localPackSearchSchema>;
-export type LocalKeywordSuggestionsInput = z.infer<typeof localKeywordSuggestionsSchema>;
-export type LocalCityKeywordSuggestionsInput = z.infer<typeof localCityKeywordSuggestionsSchema>;
+export type LocalKeywordSuggestionsInput = z.infer<
+  typeof localKeywordSuggestionsSchema
+>;
+export type LocalCityKeywordSuggestionsInput = z.infer<
+  typeof localCityKeywordSuggestionsSchema
+>;

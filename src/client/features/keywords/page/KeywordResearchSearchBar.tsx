@@ -10,15 +10,17 @@ type Props = {
   controller: KeywordResearchControllerState;
 };
 
+// Lista de ubicaciones disponibles para el dropdown. España va primero
+// porque es el mercado por defecto del producto.
 const LOCATION_OPTIONS = [
-  { code: 2840, label: "United States" },
-  { code: 2826, label: "United Kingdom" },
-  { code: 2276, label: "Germany" },
-  { code: 2250, label: "France" },
+  { code: 2724, label: "España" },
+  { code: 2840, label: "Estados Unidos" },
+  { code: 2826, label: "Reino Unido" },
+  { code: 2276, label: "Alemania" },
+  { code: 2250, label: "Francia" },
+  { code: 2380, label: "Italia" },
   { code: 2036, label: "Australia" },
-  { code: 2124, label: "Canada" },
-  { code: 2356, label: "India" },
-  { code: 2076, label: "Brazil" },
+  { code: 2124, label: "Canadá" },
 ];
 
 export function KeywordResearchSearchBar({ controller }: Props) {
@@ -39,7 +41,7 @@ export function KeywordResearchSearchBar({ controller }: Props) {
             {(field) => (
               <input
                 className="grow min-w-0"
-                placeholder="Enter Keyword"
+                placeholder="Introduce una keyword"
                 value={field.state.value}
                 onChange={(event) => {
                   field.handleChange(event.target.value);
@@ -80,7 +82,7 @@ export function KeywordResearchSearchBar({ controller }: Props) {
             >
               {RESULT_LIMITS.map((limit) => (
                 <option key={limit} value={limit}>
-                  {limit} results
+                  {limit} resultados
                 </option>
               ))}
             </select>
@@ -96,9 +98,9 @@ export function KeywordResearchSearchBar({ controller }: Props) {
                 field.handleChange(normalizeKeywordMode(event.target.value))
               }
             >
-              <option value="auto">Auto</option>
-              <option value="related">Related keywords</option>
-              <option value="suggestions">Suggestions</option>
+              <option value="auto">Automático</option>
+              <option value="related">Keywords relacionadas</option>
+              <option value="suggestions">Sugerencias</option>
               <option value="ideas">Ideas</option>
             </select>
           )}
@@ -109,7 +111,7 @@ export function KeywordResearchSearchBar({ controller }: Props) {
           className="btn btn-primary btn-sm px-6 font-semibold"
           disabled={isLoading}
         >
-          {isLoading ? "Searching..." : "Search"}
+          {isLoading ? "Buscando..." : "Buscar"}
         </button>
       </form>
       {searchInputError ? (

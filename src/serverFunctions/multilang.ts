@@ -14,8 +14,15 @@ import {
   searchPlacesSchema,
   deleteFichasBulkSchema,
 } from "@/types/schemas/multilang";
-import type { MultilangDB, MultilangFicha, PlaceSearchResult } from "@/types/multilang";
-import { analyzeFicha, searchPlaces as searchPlacesLib } from "@/server/lib/multilang";
+import type {
+  MultilangDB,
+  MultilangFicha,
+  PlaceSearchResult,
+} from "@/types/multilang";
+import {
+  analyzeFicha,
+  searchPlaces as searchPlacesLib,
+} from "@/server/lib/multilang";
 import { parseJson } from "@/server/lib/kv-cache";
 
 // ============================================================================
@@ -49,7 +56,9 @@ async function saveDB(projectId: string, db: MultilangDB): Promise<void> {
 
 /** Genera un ID único */
 function generateId(prefix = ""): string {
-  return prefix + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  return (
+    prefix + Date.now().toString(36) + Math.random().toString(36).slice(2, 6)
+  );
 }
 
 // ============================================================================
@@ -78,7 +87,9 @@ export const addFichas = createServerFn({ method: "POST" })
 
       // Detectar si es URL o nombre
       const isUrl =
-        /^https?:\/\//.test(input) || input.includes("maps.app.goo.gl") || input.includes("goo.gl");
+        /^https?:\/\//.test(input) ||
+        input.includes("maps.app.goo.gl") ||
+        input.includes("goo.gl");
 
       const ficha: MultilangFicha = {
         id: generateId(),
@@ -99,7 +110,9 @@ export const addFichas = createServerFn({ method: "POST" })
 
       // Verificar duplicados
       const isDuplicate = db.fichas.some(
-        (f) => (ficha.url && f.url === ficha.url) || (ficha.inputName && f.inputName === ficha.inputName),
+        (f) =>
+          (ficha.url && f.url === ficha.url) ||
+          (ficha.inputName && f.inputName === ficha.inputName),
       );
 
       if (!isDuplicate) {
@@ -260,4 +273,3 @@ export const deleteFichasBulk = createServerFn({ method: "POST" })
     await saveDB(data.projectId, db);
     return { deleted: before - db.fichas.length };
   });
-

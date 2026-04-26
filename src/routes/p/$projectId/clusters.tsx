@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useMutation } from "@tanstack/react-query";
+import { useProjectContext } from "@/client/hooks/useProjectContext";
 import {
   Search,
   Network,
@@ -11,7 +12,12 @@ import {
   Save,
   Trash2,
 } from "lucide-react";
-import { generateClusters, saveClusterPlan, getClusterPlans, deleteClusterPlan } from "@/serverFunctions/clusters";
+import {
+  generateClusters,
+  saveClusterPlan,
+  getClusterPlans,
+  deleteClusterPlan,
+} from "@/serverFunctions/clusters";
 import type { ClusterGroup, ClusterPlan } from "@/types/clusters";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
 import {
@@ -30,8 +36,21 @@ export const Route = createFileRoute("/p/$projectId/clusters")({
 
 function ClustersPage() {
   const { projectId } = Route.useParams();
+  const { project, locationCode: projectLocationCode } =
+    useProjectContext(projectId);
   const [keyword, setKeyword] = useState("");
   const [locationCode, setLocationCode] = useState(2724);
+
+  // Pre-rellenar con el contexto del proyecto al cargar.
+  useEffect(() => {
+    if (!project) return;
+    if (keyword === "" && project.targetKeyword)
+      setKeyword(project.targetKeyword);
+    if (projectLocationCode != null && locationCode === 2724) {
+      setLocationCode(projectLocationCode);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [project, projectLocationCode]);
   const [expandedCluster, setExpandedCluster] = useState<string | null>(null);
   const [savedPlans, setSavedPlans] = useState<ClusterPlan[]>([]);
   const [planName, setPlanName] = useState("");
@@ -51,19 +70,27 @@ function ClustersPage() {
   }, [loadPlans]);
 
   const clusterMutation = useMutation({
-    mutationFn: (data: { keyword: string; locationCode: number; languageCode: string }) =>
-      generateClusters({ data }),
+    mutationFn: (data: {
+      keyword: string;
+      locationCode: number;
+      languageCode: string;
+    }) => generateClusters({ data }),
   });
 
   const saveMutation = useMutation({
-    mutationFn: (data: { projectId: string; name: string; pillarKeyword: string; clusters: ClusterGroup[] }) =>
-      saveClusterPlan({ data }),
+    mutationFn: (data: {
+      projectId: string;
+      name: string;
+      pillarKeyword: string;
+      clusters: ClusterGroup[];
+    }) => saveClusterPlan({ data }),
     onSuccess: () => {
       toast.success("Plan guardado");
       setPlanName("");
       void loadPlans();
     },
-    onError: (err) => toast.error(getStandardErrorMessage(err, "Error al guardar")),
+    onError: (err) =>
+      toast.error(getStandardErrorMessage(err, "Error al guardar")),
   });
 
   const deleteMutation = useMutation({
@@ -137,7 +164,8 @@ function ClustersPage() {
       <div className="shrink-0 px-4 md:px-6 pt-4 pb-2 max-w-8xl mx-auto w-full">
         <h1 className="text-xl font-bold mb-1">Topic Clusters</h1>
         <p className="text-sm text-base-content/60 mb-3">
-          Genera clusters de keywords a partir de una semilla para planificar tu estrategia de contenido.
+          Genera clusters de keywords a partir de una semilla para planificar tu
+          estrategia de contenido.
         </p>
 
         <form
@@ -183,8 +211,16 @@ function ClustersPage() {
             <LoadingState />
           ) : clusterMutation.isError ? (
             <div className="mt-4 rounded-xl border border-error/30 bg-error/10 p-5 text-error">
-              <p className="text-sm">{getStandardErrorMessage(clusterMutation.error, "Error generando clusters")}</p>
-              <button className="btn btn-sm mt-2" onClick={() => clusterMutation.reset()}>
+              <p className="text-sm">
+                {getStandardErrorMessage(
+                  clusterMutation.error,
+                  "Error generando clusters",
+                )}
+              </p>
+              <button
+                className="btn btn-sm mt-2"
+                onClick={() => clusterMutation.reset()}
+              >
                 Reintentar
               </button>
             </div>
@@ -193,13 +229,19 @@ function ClustersPage() {
               {/* Pillar + actions */}
               <div className="flex items-center justify-between flex-wrap gap-2">
                 <div>
-                  <span className="badge badge-primary badge-lg capitalize">{pillarKeyword}</span>
+                  <span className="badge badge-primary badge-lg capitalize">
+                    {pillarKeyword}
+                  </span>
                   <span className="text-sm text-base-content/60 ml-2">
-                    {clusters.length} clusters · {clusters.reduce((s, c) => s + c.count, 0)} keywords
+                    {clusters.length} clusters ·{" "}
+                    {clusters.reduce((s, c) => s + c.count, 0)} keywords
                   </span>
                 </div>
                 <div className="flex gap-2">
-                  <button className="btn btn-ghost btn-sm gap-1" onClick={handleExportCsv}>
+                  <button
+                    className="btn btn-ghost btn-sm gap-1"
+                    onClick={handleExportCsv}
+                  >
                     <FileDown className="size-3.5" />
                     CSV
                   </button>
@@ -237,21 +279,33 @@ function ClustersPage() {
                     >
                       <button
                         className="w-full px-4 py-3 flex items-center justify-between hover:bg-base-200/50 text-left"
-                        onClick={() => setExpandedCluster(isExpanded ? null : cluster.name)}
+                        onClick={() =>
+                          setExpandedCluster(isExpanded ? null : cluster.name)
+                        }
                       >
                         <div>
                           <div className="font-medium text-sm capitalize flex items-center gap-2">
                             {cluster.name}
-                            <span className="badge badge-xs badge-ghost">{cluster.count}</span>
+                            <span className="badge badge-xs badge-ghost">
+                              {cluster.count}
+                            </span>
                           </div>
                           <div className="flex gap-3 mt-1 text-xs text-base-content/50">
-                            <span>Vol: {formatNumber(cluster.totalVolume)}</span>
+                            <span>
+                              Vol: {formatNumber(cluster.totalVolume)}
+                            </span>
                             <span>KD: {cluster.avgDifficulty}</span>
                             <span>CPC: ${cluster.avgCpc.toFixed(2)}</span>
-                            <span className={`badge badge-xs ${tierClass}`}>{cluster.avgPriority}</span>
+                            <span className={`badge badge-xs ${tierClass}`}>
+                              {cluster.avgPriority}
+                            </span>
                           </div>
                         </div>
-                        {isExpanded ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
+                        {isExpanded ? (
+                          <ChevronUp className="size-4" />
+                        ) : (
+                          <ChevronDown className="size-4" />
+                        )}
                       </button>
 
                       {isExpanded && (
@@ -267,12 +321,23 @@ function ClustersPage() {
                             </thead>
                             <tbody>
                               {cluster.keywords.map((kw) => (
-                                <tr key={kw.keyword} className="hover:bg-base-200/30">
-                                  <td className="capitalize max-w-[200px] truncate">{kw.keyword}</td>
-                                  <td className="text-right tabular-nums">{formatNumber(kw.searchVolume)}</td>
-                                  <td className="text-right tabular-nums">{kw.keywordDifficulty ?? "-"}</td>
+                                <tr
+                                  key={kw.keyword}
+                                  className="hover:bg-base-200/30"
+                                >
+                                  <td className="capitalize max-w-[200px] truncate">
+                                    {kw.keyword}
+                                  </td>
                                   <td className="text-right tabular-nums">
-                                    {kw.cpc != null ? `$${kw.cpc.toFixed(2)}` : "-"}
+                                    {formatNumber(kw.searchVolume)}
+                                  </td>
+                                  <td className="text-right tabular-nums">
+                                    {kw.keywordDifficulty ?? "-"}
+                                  </td>
+                                  <td className="text-right tabular-nums">
+                                    {kw.cpc != null
+                                      ? `$${kw.cpc.toFixed(2)}`
+                                      : "-"}
                                   </td>
                                 </tr>
                               ))}
@@ -292,8 +357,8 @@ function ClustersPage() {
                 Introduce una keyword semilla para generar clusters
               </p>
               <p className="text-sm text-base-content/50 max-w-md mx-auto">
-                Buscaremos keywords relacionadas y las agruparemos en clusters temáticos
-                para planificar tu estrategia de contenido.
+                Buscaremos keywords relacionadas y las agruparemos en clusters
+                temáticos para planificar tu estrategia de contenido.
               </p>
             </div>
           ) : null}
@@ -314,7 +379,9 @@ function ClustersPage() {
                     <div>
                       <span className="font-medium text-sm">{plan.name}</span>
                       <span className="text-xs text-base-content/50 ml-2">
-                        {plan.clusters.length} clusters · {plan.clusters.reduce((s, c) => s + c.count, 0)} keywords
+                        {plan.clusters.length} clusters ·{" "}
+                        {plan.clusters.reduce((s, c) => s + c.count, 0)}{" "}
+                        keywords
                       </span>
                       <span className="text-xs text-base-content/40 ml-2">
                         {new Date(plan.savedAt).toLocaleDateString("es-ES")}
@@ -322,7 +389,9 @@ function ClustersPage() {
                     </div>
                     <button
                       className="btn btn-ghost btn-xs text-error"
-                      onClick={() => deleteMutation.mutate({ projectId, planId: plan.id })}
+                      onClick={() =>
+                        deleteMutation.mutate({ projectId, planId: plan.id })
+                      }
                       disabled={deleteMutation.isPending}
                     >
                       <Trash2 className="size-3" />
@@ -342,7 +411,10 @@ function LoadingState() {
   return (
     <div className="mt-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
       {Array.from({ length: 6 }).map((_, i) => (
-        <div key={i} className="border border-base-300 rounded-xl bg-base-100 p-4">
+        <div
+          key={i}
+          className="border border-base-300 rounded-xl bg-base-100 p-4"
+        >
           <div className="skeleton h-4 w-32 mb-2" />
           <div className="flex gap-3">
             <div className="skeleton h-3 w-16" />

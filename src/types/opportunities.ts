@@ -33,10 +33,10 @@ export type OpportunityResult = {
 };
 
 export type OpportunityType =
-  | "near_top3"       // Posiciones 4-6
-  | "second_page"     // Posiciones 11-20
-  | "low_ctr"         // CTR por debajo del benchmark
-  | "cannibalized";   // Múltiples URLs para la misma keyword
+  | "near_top3" // Posiciones 4-6
+  | "second_page" // Posiciones 11-20
+  | "low_ctr" // CTR por debajo del benchmark
+  | "cannibalized"; // Múltiples URLs para la misma keyword
 
 /** Grupo de canibalización — keyword que rankea con varias URLs */
 export type CannibalizationGroup = {

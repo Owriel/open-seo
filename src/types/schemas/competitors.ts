@@ -17,4 +17,6 @@ export const keywordIntersectionSchema = z.object({
 });
 
 export type FindCompetitorsInput = z.infer<typeof findCompetitorsSchema>;
-export type KeywordIntersectionInput = z.infer<typeof keywordIntersectionSchema>;
+export type KeywordIntersectionInput = z.infer<
+  typeof keywordIntersectionSchema
+>;

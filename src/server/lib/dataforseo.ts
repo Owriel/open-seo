@@ -197,7 +197,11 @@ export type GoogleAdsKeywordItem = {
   cpc?: number;
   low_top_of_page_bid?: number;
   high_top_of_page_bid?: number;
-  monthly_searches?: Array<{ year: number; month: number; search_volume: number }>;
+  monthly_searches?: Array<{
+    year: number;
+    month: number;
+    search_volume: number;
+  }>;
   keyword_annotations?: Record<string, object>;
 };
 
@@ -235,7 +239,10 @@ export async function fetchGoogleAdsKeywordsForKeywordsRaw(
   );
 
   if (!response.ok) {
-    throw new AppError("INTERNAL_ERROR", `DataForSEO Google Ads API error: ${response.status}`);
+    throw new AppError(
+      "INTERNAL_ERROR",
+      `DataForSEO Google Ads API error: ${response.status}`,
+    );
   }
 
   const data: {
@@ -290,7 +297,11 @@ export async function lookupCityLocationCode(
 }
 
 const normalize = (s: string) =>
-  s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+  s
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
 
 function parseCityFromResponse(
   data: unknown,
@@ -316,7 +327,8 @@ function parseCityFromResponse(
   const results = typedData.tasks?.[0]?.result ?? typedData.result ?? [];
 
   const cities = results.filter(
-    (r) => r.location_type === "City" &&
+    (r) =>
+      r.location_type === "City" &&
       r.country_iso_code?.toUpperCase() === countryCode.toUpperCase(),
   );
 
@@ -327,23 +339,32 @@ function parseCityFromResponse(
     (r) => normalize(r.location_name.split(",")[0]) === cityNorm,
   );
   if (exactMatch) {
-    return { locationCode: exactMatch.location_code, locationName: exactMatch.location_name };
+    return {
+      locationCode: exactMatch.location_code,
+      locationName: exactMatch.location_name,
+    };
   }
 
   // Starts-with match (ej: "castellon" → "Castellon de la Plana")
-  const startsWithMatch = cities.find(
-    (r) => normalize(r.location_name.split(",")[0]).startsWith(cityNorm),
+  const startsWithMatch = cities.find((r) =>
+    normalize(r.location_name.split(",")[0]).startsWith(cityNorm),
   );
   if (startsWithMatch) {
-    return { locationCode: startsWithMatch.location_code, locationName: startsWithMatch.location_name };
+    return {
+      locationCode: startsWithMatch.location_code,
+      locationName: startsWithMatch.location_name,
+    };
   }
 
   // Contains match
-  const containsMatch = cities.find(
-    (r) => normalize(r.location_name).includes(cityNorm),
+  const containsMatch = cities.find((r) =>
+    normalize(r.location_name).includes(cityNorm),
   );
   if (containsMatch) {
-    return { locationCode: containsMatch.location_code, locationName: containsMatch.location_name };
+    return {
+      locationCode: containsMatch.location_code,
+      locationName: containsMatch.location_name,
+    };
   }
 
   return null;
@@ -515,17 +536,18 @@ export type CompetitorDomainItem = {
   intersections?: number | null;
   full_domain_metrics?: Record<
     string,
-    {
-      organic?: {
-        etv?: number | null;
-        count?: number | null;
-        estimated_paid_traffic_cost?: number | null;
-        is_up?: number | null;
-        is_down?: number | null;
-        is_new?: number | null;
-        is_lost?: number | null;
-      } | null;
-    } | undefined
+    | {
+        organic?: {
+          etv?: number | null;
+          count?: number | null;
+          estimated_paid_traffic_cost?: number | null;
+          is_up?: number | null;
+          is_down?: number | null;
+          is_new?: number | null;
+          is_lost?: number | null;
+        } | null;
+      }
+    | undefined
   > | null;
 };
 
@@ -589,7 +611,11 @@ export async function fetchDomainIntersectionRaw(
   locationCode: number,
   languageCode: string,
   limit: number = 100,
-  intersectionType: "all" | "target1_not_target2" | "target2_not_target1" | "common" = "all",
+  intersectionType:
+    | "all"
+    | "target1_not_target2"
+    | "target2_not_target1"
+    | "common" = "all",
 ): Promise<DomainIntersectionItem[]> {
   const api = getLabsApi();
 
@@ -607,7 +633,9 @@ export async function fetchDomainIntersectionRaw(
     language_code: languageCode,
     limit,
     order_by: ["first_domain_serp_element.etv,desc"],
-    exclude_intersections: intersectionType === "target1_not_target2" || intersectionType === "target2_not_target1",
+    exclude_intersections:
+      intersectionType === "target1_not_target2" ||
+      intersectionType === "target2_not_target1",
     filters,
   });
 
@@ -615,8 +643,9 @@ export async function fetchDomainIntersectionRaw(
   const task = assertOk(response);
 
   // eslint-disable-next-line typescript/no-unsafe-type-assertion
-  const result = (task as { result?: Array<{ items?: unknown[]; total_count?: number }> })
-    .result?.[0];
+  const result = (
+    task as { result?: Array<{ items?: unknown[]; total_count?: number }> }
+  ).result?.[0];
   // eslint-disable-next-line typescript/no-unsafe-type-assertion
   return (result?.items ?? []) as DomainIntersectionItem[];
 }
@@ -661,9 +690,18 @@ export type GoogleMapsItem = {
   total_photos?: number | null;
   price_level?: string | null;
   work_hours?: {
-    work_hours?: Record<string, Array<{ open?: { hour?: number; minute?: number }; close?: { hour?: number; minute?: number } }>> | null;
+    work_hours?: Record<
+      string,
+      Array<{
+        open?: { hour?: number; minute?: number };
+        close?: { hour?: number; minute?: number };
+      }>
+    > | null;
   } | null;
-  local_justifications?: Array<{ justification_type?: string; description?: string }> | null;
+  local_justifications?: Array<{
+    justification_type?: string;
+    description?: string;
+  }> | null;
 };
 
 export async function fetchGoogleMapsResultsRaw(

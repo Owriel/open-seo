@@ -16,7 +16,7 @@
   ],
   // IMPORTANTE: En producción, usar `wrangler secret put` para AUTH_SECRET y GOOGLE_PLACES_API_KEY
   "vars": {
-    "AUTH_MODE": "local_noauth"
+    "AUTH_MODE": "local_noauth",
   },
   "kv_namespaces": [
     {

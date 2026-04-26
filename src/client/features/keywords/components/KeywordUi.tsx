@@ -29,8 +29,11 @@ export function OverviewStats({ keyword }: { keyword: KeywordResearchRow }) {
             {formatNumber(keyword.searchVolume)}
           </span>
         </div>
-        <div className="flex items-center gap-1.5">
-          <span className="text-base-content/50">CPC</span>
+        <div
+          className="flex items-center gap-1.5"
+          title="Coste por clic en USD"
+        >
+          <span className="text-base-content/50">CPC (USD)</span>
           <span className="font-semibold tabular-nums">
             {keyword.cpc == null ? "-" : `$${keyword.cpc.toFixed(2)}`}
           </span>
@@ -141,13 +144,13 @@ export function KeywordCard({
 
       <div className="grid grid-cols-3 gap-2 text-xs">
         <div className="text-center">
-          <p className="text-base-content/50">Volume</p>
+          <p className="text-base-content/50">Volumen</p>
           <p className="font-medium tabular-nums">
             {formatNumber(row.searchVolume)}
           </p>
         </div>
-        <div className="text-center">
-          <p className="text-base-content/50">CPC</p>
+        <div className="text-center" title="Coste por clic en USD">
+          <p className="text-base-content/50">CPC (USD)</p>
           <p className="font-medium tabular-nums">
             {row.cpc == null ? "-" : `$${row.cpc.toFixed(2)}`}
           </p>

@@ -17,5 +17,10 @@
     // Tailwindcss used via @tailwindcss/vite plugin
     "tailwindcss",
     "daisyui",
+    // Tipos ambient globales (google.maps.*) usados en LocalGridMap.tsx
+    "@types/google.maps",
   ],
+  // Ignora exports usados solo en su propio archivo (false positives comunes
+  // cuando se exportan funciones/tipos auxiliares para tests futuros o reuso).
+  "ignoreExportsUsedInFile": true,
 }

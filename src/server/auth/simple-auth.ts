@@ -27,7 +27,8 @@ function getUsers(): Record<string, string> {
 
 function getSecret(): string {
   const secret = env.AUTH_SECRET;
-  if (!secret) throw new Error("AUTH_SECRET no configurado en variables de entorno");
+  if (!secret)
+    throw new Error("AUTH_SECRET no configurado en variables de entorno");
   return secret;
 }
 
@@ -48,7 +49,11 @@ async function hmacSign(payload: string, secret: string): Promise<string> {
   return btoa(String.fromCharCode(...new Uint8Array(sig)));
 }
 
-async function hmacVerify(payload: string, signature: string, secret: string): Promise<boolean> {
+async function hmacVerify(
+  payload: string,
+  signature: string,
+  secret: string,
+): Promise<boolean> {
   const expected = await hmacSign(payload, secret);
   return expected === signature;
 }

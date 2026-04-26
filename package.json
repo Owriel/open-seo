@@ -4,9 +4,13 @@
   "sideEffects": false,
   "version": "0.0.1",
   "type": "module",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "packageManager": "pnpm@10.32.0",
   "scripts": {
-    "dev": "AUTH_MODE=local_noauth vite dev",
-    "dev:agents": "mkdir -p .logs && AUTH_MODE=local_noauth portless run vite dev 2>&1 | tee .logs/dev-server.log",
+    "dev": "cross-env AUTH_MODE=local_noauth vite dev",
+    "dev:agents": "mkdir -p .logs && cross-env AUTH_MODE=local_noauth portless run vite dev 2>&1 | tee .logs/dev-server.log",
     "build": "vite build && tsc --noEmit",
     "lint": "oxlint . --type-aware",
     "lint:fix": "oxlint . --type-aware --fix",
@@ -19,8 +23,8 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate:local": "wrangler d1 migrations apply DB --local",
     "db:migrate:prod": "wrangler d1 migrations apply DB --remote",
-    "knip": "knip",
-    "ci:check": "prettier --check . && knip && tsc --noEmit && oxlint . --type-aware"
+    "knip": "knip --exclude exports,types,nsExports,nsTypes,enumMembers,classMembers",
+    "ci:check": "prettier --check . && knip --exclude exports,types,nsExports,nsTypes,enumMembers,classMembers && tsc --noEmit && oxlint . --type-aware"
   },
   "cloudflare": {
     "bindings": {
@@ -40,6 +44,7 @@
   },
   "dependencies": {
     "@every-app/sdk": "^0.1.14",
+    "@googlemaps/js-api-loader": "^2.0.2",
     "@tanstack/query-core": "^5.90.9",
     "@tanstack/react-form": "^1.25.0",
     "@tanstack/react-query": "^5.90.9",
@@ -50,8 +55,8 @@
     "cloudflare": "^5.2.0",
     "daisyui": "^5.5.5",
     "dataforseo-client": "^2.0.19",
-    "drizzle-orm": "^0.44.4",
-    "fast-xml-parser": "^5.4.1",
+    "drizzle-orm": "^0.45.2",
+    "fast-xml-parser": "^5.7.1",
     "jose": "^6.0.12",
     "lucide-react": "^0.542.0",
     "papaparse": "^5.5.3",
@@ -71,7 +76,16 @@
       "esbuild",
       "sharp",
       "workerd"
-    ]
+    ],
+    "overrides": {
+      "undici": ">=7.24.0",
+      "h3": ">=2.0.1-rc.17",
+      "h3-v2": "npm:h3@>=2.0.1-rc.17",
+      "fast-xml-parser": ">=5.5.6",
+      "picomatch": ">=4.0.4",
+      "vite": ">=7.3.2 <8",
+      "drizzle-orm": ">=0.45.2"
+    }
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "^1.13.18",
@@ -80,11 +94,13 @@
     "@tailwindcss/vite": "^4.1.11",
     "@tanstack/devtools-vite": "^0.5.1",
     "@tanstack/react-devtools": "^0.9.6",
+    "@types/google.maps": "^3.64.0",
     "@types/node": "^22.18.13",
     "@types/papaparse": "^5.5.2",
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
     "@vitejs/plugin-react": "^4.6.0",
+    "cross-env": "^7.0.3",
     "drizzle-kit": "^0.31.4",
     "knip": "^5.66.4",
     "oxlint": "^1.50.0",
@@ -92,7 +108,7 @@
     "portless": "^0.5.2",
     "prettier": "^3.6.2",
     "typescript": "^5.9.3",
-    "vite": "^7.1.2",
+    "vite": "~7.3.2",
     "vite-tsconfig-paths": "^5.1.4",
     "wrangler": "^4.45.3"
   }

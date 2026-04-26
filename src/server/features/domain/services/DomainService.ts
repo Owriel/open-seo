@@ -6,7 +6,12 @@ import {
   type DomainRankedKeywordItem,
 } from "@/server/lib/dataforseo";
 import { sortBy } from "remeda";
-import { buildCacheKey, getCached, setCached, CACHE_TTL_SECONDS } from "@/server/lib/kv-cache";
+import {
+  buildCacheKey,
+  getCached,
+  setCached,
+  CACHE_TTL_SECONDS,
+} from "@/server/lib/kv-cache";
 import { z } from "zod";
 
 /** Domain overview — 30 days cache */
@@ -144,11 +149,9 @@ async function getOverview(input: {
     void setCached(cacheKey, result, DOMAIN_OVERVIEW_TTL_SECONDS, {
       label: `Dominio: ${input.domain}`,
       params: { domain: input.domain, locationCode: input.locationCode },
-    }).catch(
-      (error) => {
-        console.error("domain.overview.cache-write failed:", error);
-      },
-    );
+    }).catch((error) => {
+      console.error("domain.overview.cache-write failed:", error);
+    });
   }
 
   return result;

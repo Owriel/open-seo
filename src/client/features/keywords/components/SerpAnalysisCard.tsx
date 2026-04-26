@@ -38,7 +38,7 @@ export function SerpAnalysisCard({
         <p>{error}</p>
         {onRetry ? (
           <button className="btn btn-xs" onClick={onRetry}>
-            Retry
+            Reintentar
           </button>
         ) : null}
       </div>
@@ -49,7 +49,9 @@ export function SerpAnalysisCard({
   return (
     <div>
       <div className="text-xs text-base-content/50 mb-3">
-        {items.length} organic results
+        {items.length === 1
+          ? "1 resultado orgánico"
+          : `${items.length} resultados orgánicos`}
       </div>
       <SerpAnalysisTable items={pageItems} />
       <SerpAnalysisPagination
@@ -68,11 +70,11 @@ function SerpAnalysisTable({ items }: { items: SerpResultItem[] }) {
         <thead>
           <tr className="text-xs text-base-content/60">
             <th className="w-8">#</th>
-            <th>Page</th>
-            <th className="text-right w-20">Traffic</th>
-            <th className="text-right w-20">Ref. Domains</th>
+            <th>Página</th>
+            <th className="text-right w-20">Tráfico</th>
+            <th className="text-right w-20">Dom. ref.</th>
             <th className="text-right w-20">Backlinks</th>
-            <th className="text-center w-16">Change</th>
+            <th className="text-center w-16">Cambio</th>
           </tr>
         </thead>
         <tbody>
@@ -135,7 +137,7 @@ function SerpAnalysisPagination({
   return (
     <div className="flex items-center justify-between mt-3 pt-3 border-t border-base-200">
       <span className="text-xs text-base-content/50">
-        Page {page + 1} of {totalPages}
+        Página {page + 1} de {totalPages}
       </span>
       <div className="flex gap-1">
         <button
@@ -144,14 +146,14 @@ function SerpAnalysisPagination({
           onClick={() => onPageChange(page - 1)}
         >
           <ChevronLeft className="size-3.5" />
-          Prev
+          Anterior
         </button>
         <button
           className="btn btn-ghost btn-xs"
           disabled={page >= totalPages - 1}
           onClick={() => onPageChange(page + 1)}
         >
-          Next
+          Siguiente
           <ChevronRight className="size-3.5" />
         </button>
       </div>
@@ -176,9 +178,9 @@ function SerpAnalysisLoadingState() {
 function SerpAnalysisEmptyState({ keyword }: { keyword?: string | null }) {
   return (
     <div className="text-sm text-base-content/50 text-center py-8">
-      <p>No SERP details available for this keyword yet.</p>
+      <p>Aún no hay detalles SERP disponibles para esta keyword.</p>
       {keyword ? (
-        <p className="mt-1">Try clicking another keyword to load data.</p>
+        <p className="mt-1">Pulsa otra keyword para cargar los datos.</p>
       ) : null}
     </div>
   );
@@ -192,7 +194,7 @@ function RankChangeBadge({
   isNew?: boolean;
 }) {
   if (isNew) {
-    return <span className="badge badge-success badge-xs">new</span>;
+    return <span className="badge badge-success badge-xs">nuevo</span>;
   }
   if (change == null)
     return <Minus className="size-3 text-base-content/40 mx-auto" />;

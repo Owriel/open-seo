@@ -20,7 +20,13 @@ import {
   fetchGoogleMapsResultsRaw,
   fetchKeywordSuggestionsRaw,
 } from "@/server/lib/dataforseo";
-import { buildCacheKey, getCached, parseJson, setCached, CACHE_TTL_SECONDS } from "@/server/lib/kv-cache";
+import {
+  buildCacheKey,
+  getCached,
+  parseJson,
+  setCached,
+  CACHE_TTL_SECONDS,
+} from "@/server/lib/kv-cache";
 import { analyzeOpportunities } from "@/server/lib/opportunities";
 import { runMiniCrawl } from "@/server/lib/report-crawl";
 import { calculateScores } from "@/server/lib/report";
@@ -36,7 +42,10 @@ import type {
   ReportTechnicalHealth,
   ReportGbp,
 } from "@/types/report";
-import type { CompetitorRow, KeywordIntersectionRow } from "@/types/competitors";
+import type {
+  CompetitorRow,
+  KeywordIntersectionRow,
+} from "@/types/competitors";
 import type { LocalPackResult, LocalKeywordSuggestion } from "@/types/local";
 import type { OpportunityKeyword } from "@/types/opportunities";
 
@@ -59,7 +68,11 @@ function publicReportKey(publicId: string) {
 async function loadReportIndex(projectId: string): Promise<string[]> {
   const raw = await env.KV.get(reportIndexKey(projectId), "text");
   if (!raw) return [];
-  try { return parseJson<string[]>(raw); } catch { return []; }
+  try {
+    return parseJson<string[]>(raw);
+  } catch {
+    return [];
+  }
 }
 
 async function saveReportIndex(projectId: string, ids: string[]) {
@@ -107,7 +120,11 @@ export const generateReport = createServerFn({ method: "POST" })
 
       // 4. Keywords locales (llamada 4, solo si hay keyword)
       data.keyword
-        ? fetchLocalKeywordsRaw(data.keyword, data.locationCode, data.languageCode)
+        ? fetchLocalKeywordsRaw(
+            data.keyword,
+            data.locationCode,
+            data.languageCode,
+          )
         : Promise.resolve(null),
 
       // 5. Mini-crawl técnico (sin coste DataForSEO)
@@ -124,9 +141,7 @@ export const generateReport = createServerFn({ method: "POST" })
       }),
 
       // 6. GBP análisis (sin coste DataForSEO, usa Google Places API gratuita)
-      data.gbpInput
-        ? analyzeGbp(data.gbpInput)
-        : Promise.resolve(null),
+      data.gbpInput ? analyzeGbp(data.gbpInput) : Promise.resolve(null),
     ]);
 
     // ===== FASE 2: Construir secciones =====
@@ -146,18 +161,19 @@ export const generateReport = createServerFn({ method: "POST" })
     };
 
     // Oportunidades (reutilizar keywords del domain overview)
-    const opportunityKeywords: OpportunityKeyword[] = visibility.topKeywords.map((k) => ({
-      keyword: k.keyword,
-      url: k.url,
-      position: k.position,
-      clicks: null,
-      impressions: null,
-      ctr: null,
-      searchVolume: k.searchVolume,
-      keywordDifficulty: null,
-      cpc: null,
-      traffic: k.traffic,
-    }));
+    const opportunityKeywords: OpportunityKeyword[] =
+      visibility.topKeywords.map((k) => ({
+        keyword: k.keyword,
+        url: k.url,
+        position: k.position,
+        clicks: null,
+        impressions: null,
+        ctr: null,
+        searchVolume: k.searchVolume,
+        keywordDifficulty: null,
+        cpc: null,
+        traffic: k.traffic,
+      }));
 
     const oppAnalysis = analyzeOpportunities(opportunityKeywords, {
       minPosition: 4,
@@ -177,7 +193,8 @@ export const generateReport = createServerFn({ method: "POST" })
     // Competidores
     const competitors: ReportCompetitors = {
       competitors: competitorsResult,
-      mainCompetitor: competitorsResult.length > 0 ? competitorsResult[0].domain : null,
+      mainCompetitor:
+        competitorsResult.length > 0 ? competitorsResult[0].domain : null,
     };
 
     // Content Gap (llamada 5, secuencial porque necesita mainCompetitor)
@@ -203,8 +220,10 @@ export const generateReport = createServerFn({ method: "POST" })
     if (data.keyword && localPackResult) {
       // Buscar nuestro dominio en el local pack
       const cleanDomain = domain.replace(/^www\./, "");
-      const ourEntry = localPackResult.find((r) =>
-        r.domain?.replace(/^www\./, "") === cleanDomain || r.url?.includes(cleanDomain),
+      const ourEntry = localPackResult.find(
+        (r) =>
+          r.domain?.replace(/^www\./, "") === cleanDomain ||
+          r.url?.includes(cleanDomain),
       );
 
       local = {
@@ -218,15 +237,15 @@ export const generateReport = createServerFn({ method: "POST" })
     }
 
     // ===== FASE 3: Calcular scores =====
-    const scores = calculateScores(
+    const scores = calculateScores({
       visibility,
       opportunities,
       competitors,
       contentGap,
       local,
-      technicalResult,
-      gbpResult,
-    );
+      technical: technicalResult,
+      gbp: gbpResult,
+    });
 
     // ===== FASE 4: Construir y guardar informe =====
     const report: SeoReport = {
@@ -250,7 +269,10 @@ export const generateReport = createServerFn({ method: "POST" })
     };
 
     // Guardar en KV
-    await env.KV.put(reportKey(data.projectId, reportId), JSON.stringify(report));
+    await env.KV.put(
+      reportKey(data.projectId, reportId),
+      JSON.stringify(report),
+    );
 
     // Actualizar índice
     const index = await loadReportIndex(data.projectId);
@@ -279,14 +301,23 @@ async function fetchCompetitorsRaw(
   if (cached?.competitors?.length) return cached.competitors;
 
   try {
-    const rawItems = await fetchCompetitorsDomainRaw(domain, locationCode, languageCode, 10);
+    const rawItems = await fetchCompetitorsDomainRaw(
+      domain,
+      locationCode,
+      languageCode,
+      10,
+    );
     const competitors: CompetitorRow[] = rawItems
       .filter((item) => item.domain && item.domain !== domain)
       .map((item) => {
         const metricsObj = item.full_domain_metrics ?? {};
-        type MetricsEntry = { organic?: { etv?: number | null; count?: number | null } };
+        type MetricsEntry = {
+          organic?: { etv?: number | null; count?: number | null };
+        };
         // eslint-disable-next-line typescript/no-unsafe-type-assertion
-        const firstEntry = Object.values(metricsObj)[0] as MetricsEntry | undefined;
+        const firstEntry = Object.values(metricsObj)[0] as
+          | MetricsEntry
+          | undefined;
         const organicMetrics = firstEntry?.organic;
         return {
           domain: item.domain ?? "",
@@ -326,7 +357,9 @@ async function fetchContentGap(
     limit: 50,
   });
 
-  const cached = await getCached<{ keywords: KeywordIntersectionRow[] }>(cacheKey);
+  const cached = await getCached<{ keywords: KeywordIntersectionRow[] }>(
+    cacheKey,
+  );
   if (cached?.keywords?.length) return cached.keywords;
 
   try {
@@ -345,7 +378,8 @@ async function fetchContentGap(
         keyword: item.keyword ?? "",
         searchVolume: item.keyword_data?.keyword_info?.search_volume ?? null,
         cpc: item.keyword_data?.keyword_info?.cpc ?? null,
-        keywordDifficulty: item.keyword_data?.keyword_properties?.keyword_difficulty ?? null,
+        keywordDifficulty:
+          item.keyword_data?.keyword_properties?.keyword_difficulty ?? null,
         intent: item.keyword_data?.search_intent_info?.main_intent ?? null,
         myRank: item.first_domain_serp_element?.rank_absolute ?? null,
         myEtv: item.first_domain_serp_element?.etv ?? null,
@@ -354,10 +388,19 @@ async function fetchContentGap(
       }));
 
     if (keywords.length > 0) {
-      await setCached(cacheKey, { keywords, totalCount: keywords.length }, CACHE_TTL_SECONDS, {
-        label: `Content Gap: ${ourDomain} vs ${competitorDomain}`,
-        params: { domain1: ourDomain, domain2: competitorDomain, mode: "gaps" },
-      });
+      await setCached(
+        cacheKey,
+        { keywords, totalCount: keywords.length },
+        CACHE_TTL_SECONDS,
+        {
+          label: `Content Gap: ${ourDomain} vs ${competitorDomain}`,
+          params: {
+            domain1: ourDomain,
+            domain2: competitorDomain,
+            mode: "gaps",
+          },
+        },
+      );
     }
     return keywords;
   } catch (err) {
@@ -371,18 +414,29 @@ async function fetchLocalPackRaw(
   locationCode: number,
   languageCode: string,
 ): Promise<LocalPackResult[]> {
-  const cacheKey = buildCacheKey("local:pack", { keyword, locationCode, languageCode });
+  const cacheKey = buildCacheKey("local:pack", {
+    keyword,
+    locationCode,
+    languageCode,
+  });
   const cached = await getCached<{ results: LocalPackResult[] }>(cacheKey);
   if (cached?.results?.length) return cached.results;
 
   try {
-    const rawItems = await fetchGoogleMapsResultsRaw(keyword, locationCode, languageCode, 20);
+    const rawItems = await fetchGoogleMapsResultsRaw(
+      keyword,
+      locationCode,
+      languageCode,
+      20,
+    );
     const results: LocalPackResult[] = rawItems
       .filter((item) => item.title)
       .map((item, idx) => {
         let googleMapsUrl: string | null = null;
-        if (item.cid) googleMapsUrl = `https://www.google.com/maps?cid=${item.cid}`;
-        else if (item.place_id) googleMapsUrl = `https://www.google.com/maps/place/?q=place_id:${item.place_id}`;
+        if (item.cid)
+          googleMapsUrl = `https://www.google.com/maps?cid=${item.cid}`;
+        else if (item.place_id)
+          googleMapsUrl = `https://www.google.com/maps/place/?q=place_id:${item.place_id}`;
 
         return {
           title: item.title ?? "",
@@ -391,7 +445,9 @@ async function fetchLocalPackRaw(
           ratingDistribution: item.rating_distribution ?? null,
           position: item.rank_group ?? idx + 1,
           category: item.category ?? null,
-          additionalCategories: (item.additional_categories ?? []).filter(Boolean),
+          additionalCategories: (item.additional_categories ?? []).filter(
+            Boolean,
+          ),
           address: item.address ?? null,
           city: item.address_info?.city ?? null,
           phone: item.phone ?? null,
@@ -406,7 +462,9 @@ async function fetchLocalPackRaw(
           totalPhotos: item.total_photos ?? null,
           priceLevel: item.price_level ?? null,
           workHours: null,
-          localJustifications: (item.local_justifications ?? []).map((j) => j.description ?? "").filter(Boolean),
+          localJustifications: (item.local_justifications ?? [])
+            .map((j) => j.description ?? "")
+            .filter(Boolean),
           latitude: item.latitude ?? null,
           longitude: item.longitude ?? null,
         };
@@ -430,13 +488,36 @@ async function fetchLocalKeywordsRaw(
   locationCode: number,
   languageCode: string,
 ): Promise<LocalKeywordSuggestion[]> {
-  const cacheKey = buildCacheKey("local:keywords", { keyword, locationCode, languageCode, limit: 30 });
-  const cached = await getCached<{ keywords: LocalKeywordSuggestion[] }>(cacheKey);
+  const cacheKey = buildCacheKey("local:keywords", {
+    keyword,
+    locationCode,
+    languageCode,
+    limit: 30,
+  });
+  const cached = await getCached<{ keywords: LocalKeywordSuggestion[] }>(
+    cacheKey,
+  );
   if (cached?.keywords?.length) return cached.keywords;
 
   try {
-    const rawItems = await fetchKeywordSuggestionsRaw(keyword, locationCode, languageCode, 30);
-    const localTerms = new Set(["cerca", "cerca de mi", "near me", "mejor", "mejores", "barato", "precio", "urgente", "24h", "abierto"]);
+    const rawItems = await fetchKeywordSuggestionsRaw(
+      keyword,
+      locationCode,
+      languageCode,
+      30,
+    );
+    const localTerms = new Set([
+      "cerca",
+      "cerca de mi",
+      "near me",
+      "mejor",
+      "mejores",
+      "barato",
+      "precio",
+      "urgente",
+      "24h",
+      "abierto",
+    ]);
 
     const keywords: LocalKeywordSuggestion[] = rawItems
       .filter((item) => item.keyword)
@@ -446,7 +527,8 @@ async function fetchLocalKeywordsRaw(
           keyword: item.keyword ?? "",
           searchVolume: item.keyword_info?.search_volume ?? null,
           cpc: item.keyword_info?.cpc ?? null,
-          keywordDifficulty: item.keyword_properties?.keyword_difficulty ?? null,
+          keywordDifficulty:
+            item.keyword_properties?.keyword_difficulty ?? null,
           intent: item.search_intent_info?.main_intent ?? null,
           hasLocalPack: Array.from(localTerms).some((t) => kw.includes(t)),
         };
@@ -513,53 +595,86 @@ export const getReport = createServerFn({ method: "POST" })
   .middleware(authenticatedServerFunctionMiddleware)
   .inputValidator((data: unknown) => getReportSchema.parse(data))
   .handler(async ({ data }): Promise<SeoReport | null> => {
-    const raw = await env.KV.get(reportKey(data.projectId, data.reportId), "text");
+    const raw = await env.KV.get(
+      reportKey(data.projectId, data.reportId),
+      "text",
+    );
     if (!raw) return null;
-    try { return parseJson<SeoReport>(raw); } catch { return null; }
+    try {
+      return parseJson<SeoReport>(raw);
+    } catch {
+      return null;
+    }
   });
 
 export const getReports = createServerFn({ method: "POST" })
   .middleware(authenticatedServerFunctionMiddleware)
   .inputValidator((data: unknown) => getReportsSchema.parse(data))
-  .handler(async ({ data }): Promise<{ reports: Array<{ id: string; domain: string; score: number; generatedAt: string }> }> => {
-    const index = await loadReportIndex(data.projectId);
-    const reports: Array<{ id: string; domain: string; score: number; generatedAt: string }> = [];
+  .handler(
+    async ({
+      data,
+    }): Promise<{
+      reports: Array<{
+        id: string;
+        domain: string;
+        score: number;
+        generatedAt: string;
+      }>;
+    }> => {
+      const index = await loadReportIndex(data.projectId);
+      const reports: Array<{
+        id: string;
+        domain: string;
+        score: number;
+        generatedAt: string;
+      }> = [];
 
-    for (const id of index) {
-      const raw = await env.KV.get(reportKey(data.projectId, id), "text");
-      if (raw) {
-        try {
-          const report = parseJson<SeoReport>(raw);
-          reports.push({
-            id: report.id,
-            domain: report.domain,
-            score: report.scores.global.score,
-            generatedAt: report.generatedAt,
-          });
-        } catch { /* skip */ }
+      for (const id of index) {
+        const raw = await env.KV.get(reportKey(data.projectId, id), "text");
+        if (raw) {
+          try {
+            const report = parseJson<SeoReport>(raw);
+            reports.push({
+              id: report.id,
+              domain: report.domain,
+              score: report.scores.global.score,
+              generatedAt: report.generatedAt,
+            });
+          } catch {
+            /* skip */
+          }
+        }
       }
-    }
-    return { reports };
-  });
+      return { reports };
+    },
+  );
 
 export const deleteReport = createServerFn({ method: "POST" })
   .middleware(authenticatedServerFunctionMiddleware)
   .inputValidator((data: unknown) => deleteReportSchema.parse(data))
   .handler(async ({ data }): Promise<{ success: boolean }> => {
     // Leer informe para limpiar link público si existe
-    const raw = await env.KV.get(reportKey(data.projectId, data.reportId), "text");
+    const raw = await env.KV.get(
+      reportKey(data.projectId, data.reportId),
+      "text",
+    );
     if (raw) {
       try {
         const report = parseJson<SeoReport>(raw);
         if (report.publicId) {
           await env.KV.delete(publicReportKey(report.publicId));
         }
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     }
 
     await env.KV.delete(reportKey(data.projectId, data.reportId));
     const index = await loadReportIndex(data.projectId);
-    await saveReportIndex(data.projectId, index.filter((id) => id !== data.reportId));
+    await saveReportIndex(
+      data.projectId,
+      index.filter((id) => id !== data.reportId),
+    );
     return { success: true };
   });
 
@@ -571,7 +686,10 @@ export const generatePublicLink = createServerFn({ method: "POST" })
   .middleware(authenticatedServerFunctionMiddleware)
   .inputValidator((data: unknown) => generatePublicLinkSchema.parse(data))
   .handler(async ({ data }): Promise<{ publicId: string }> => {
-    const raw = await env.KV.get(reportKey(data.projectId, data.reportId), "text");
+    const raw = await env.KV.get(
+      reportKey(data.projectId, data.reportId),
+      "text",
+    );
     if (!raw) throw new Error("NOT_FOUND");
 
     const report = parseJson<SeoReport>(raw);
@@ -585,7 +703,10 @@ export const generatePublicLink = createServerFn({ method: "POST" })
     report.publicId = publicId;
 
     // Guardar informe actualizado
-    await env.KV.put(reportKey(data.projectId, data.reportId), JSON.stringify(report));
+    await env.KV.put(
+      reportKey(data.projectId, data.reportId),
+      JSON.stringify(report),
+    );
 
     // Guardar mapeo público → datos del informe (sin projectId por seguridad)
     await env.KV.put(publicReportKey(publicId), JSON.stringify(report));
@@ -597,14 +718,20 @@ export const disablePublicLink = createServerFn({ method: "POST" })
   .middleware(authenticatedServerFunctionMiddleware)
   .inputValidator((data: unknown) => disablePublicLinkSchema.parse(data))
   .handler(async ({ data }): Promise<{ success: boolean }> => {
-    const raw = await env.KV.get(reportKey(data.projectId, data.reportId), "text");
+    const raw = await env.KV.get(
+      reportKey(data.projectId, data.reportId),
+      "text",
+    );
     if (!raw) throw new Error("NOT_FOUND");
 
     const report = parseJson<SeoReport>(raw);
     if (report.publicId) {
       await env.KV.delete(publicReportKey(report.publicId));
       report.publicId = null;
-      await env.KV.put(reportKey(data.projectId, data.reportId), JSON.stringify(report));
+      await env.KV.put(
+        reportKey(data.projectId, data.reportId),
+        JSON.stringify(report),
+      );
     }
 
     return { success: true };
@@ -619,5 +746,9 @@ export const getPublicReport = createServerFn({ method: "POST" })
   .handler(async ({ data }): Promise<SeoReport | null> => {
     const raw = await env.KV.get(publicReportKey(data.reportId), "text");
     if (!raw) return null;
-    try { return parseJson<SeoReport>(raw); } catch { return null; }
+    try {
+      return parseJson<SeoReport>(raw);
+    } catch {
+      return null;
+    }
   });

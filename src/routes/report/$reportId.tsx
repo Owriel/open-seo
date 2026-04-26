@@ -70,7 +70,11 @@ function fmtDate(iso: string): string {
 function PublicReportPage() {
   const { reportId } = Route.useParams();
 
-  const { data: report, isLoading, error } = useQuery({
+  const {
+    data: report,
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: ["publicReport", reportId],
     queryFn: () => getPublicReport({ data: { reportId } }),
     retry: false,
@@ -214,7 +218,8 @@ function ReportView({ report }: { report: SeoReport }) {
                 >
                   <span className="font-medium">{opp.keyword}</span>
                   <span className="text-base-content/50">
-                    {" "}— posición {opp.position ?? "—"}, potencial de mejora
+                    {" "}
+                    — posición {opp.position ?? "—"}, potencial de mejora
                   </span>
                 </li>
               ))}
@@ -338,8 +343,8 @@ function ReportView({ report }: { report: SeoReport }) {
                         #{r.position} {r.title}
                       </span>
                       <span className="text-xs text-base-content/50 whitespace-nowrap">
-                        {r.rating ? `${r.rating} ★` : "—"}{" "}
-                        ({fmt(r.reviewCount)} reseñas)
+                        {r.rating ? `${r.rating} ★` : "—"} ({fmt(r.reviewCount)}{" "}
+                        reseñas)
                       </span>
                     </div>
                   ))}
@@ -359,12 +364,16 @@ function ReportView({ report }: { report: SeoReport }) {
             <Stat
               label="Problemas críticos"
               value={String(report.technical.criticalCount)}
-              highlight={report.technical.criticalCount > 0 ? "error" : undefined}
+              highlight={
+                report.technical.criticalCount > 0 ? "error" : undefined
+              }
             />
             <Stat
               label="Avisos"
               value={String(report.technical.warningCount)}
-              highlight={report.technical.warningCount > 0 ? "warning" : undefined}
+              highlight={
+                report.technical.warningCount > 0 ? "warning" : undefined
+              }
             />
             <Stat
               label="Páginas analizadas"
@@ -406,9 +415,8 @@ function ReportView({ report }: { report: SeoReport }) {
             {report.gbp.hasProblematicVariants ? (
               <>
                 <p className="text-sm text-base-content/70 mb-2">
-                  Se han detectado{" "}
-                  <strong>{report.gbp.variants.length}</strong> variante(s) del
-                  nombre de tu negocio en distintos idiomas.
+                  Se han detectado <strong>{report.gbp.variants.length}</strong>{" "}
+                  variante(s) del nombre de tu negocio en distintos idiomas.
                 </p>
                 <ul className="space-y-1">
                   {report.gbp.variants.slice(0, 5).map((v, i) => (

@@ -6,13 +6,21 @@
  */
 
 import { GOOGLE_LANGUAGES } from "@/types/multilang";
-import type { MultilangFicha, LangResult, MultilangVariant, PlaceSearchResult } from "@/types/multilang";
+import type {
+  MultilangFicha,
+  LangResult,
+  MultilangVariant,
+  PlaceSearchResult,
+} from "@/types/multilang";
 import { env } from "cloudflare:workers";
 
 /** Obtiene la API key de Google Places desde variables de entorno */
 function getGooglePlacesApiKey(): string {
   const key = env.GOOGLE_PLACES_API_KEY;
-  if (!key) throw new Error("GOOGLE_PLACES_API_KEY no configurada en variables de entorno");
+  if (!key)
+    throw new Error(
+      "GOOGLE_PLACES_API_KEY no configurada en variables de entorno",
+    );
   return key;
 }
 
@@ -59,14 +67,19 @@ export function extractFtidFromUrl(url: string): string | null {
 
 /** Valida que un ftid sea válido (no 0x0:...) */
 function isValidFtid(f: string | null): f is string {
-  return !!f && /^0x[0-9a-f]{2,}:0x[0-9a-f]{2,}$/i.test(f) && !f.startsWith("0x0:");
+  return (
+    !!f && /^0x[0-9a-f]{2,}:0x[0-9a-f]{2,}$/i.test(f) && !f.startsWith("0x0:")
+  );
 }
 
 /**
  * Sigue redirects de una URL y retorna la URL final.
  * Adaptado de http/https de Node.js a fetch API.
  */
-export async function resolveUrl(inputUrl: string, maxRedirects = 5): Promise<string> {
+export async function resolveUrl(
+  inputUrl: string,
+  maxRedirects = 5,
+): Promise<string> {
   if (maxRedirects <= 0) return inputUrl;
 
   try {
@@ -113,20 +126,27 @@ export async function resolveUrl(inputUrl: string, maxRedirects = 5): Promise<st
 /**
  * Busca una ficha de negocio por nombre usando Google Places API Text Search.
  */
-export async function searchPlaceByName(
-  businessName: string,
-): Promise<{ placeId: string; name: string; address: string; mapsUrl: string } | null> {
+export async function searchPlaceByName(businessName: string): Promise<{
+  placeId: string;
+  name: string;
+  address: string;
+  mapsUrl: string;
+} | null> {
   try {
-    const response = await fetch("https://places.googleapis.com/v1/places:searchText", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Goog-Api-Key": getGooglePlacesApiKey(),
-        "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress,places.googleMapsUri",
+    const response = await fetch(
+      "https://places.googleapis.com/v1/places:searchText",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Goog-Api-Key": getGooglePlacesApiKey(),
+          "X-Goog-FieldMask":
+            "places.id,places.displayName,places.formattedAddress,places.googleMapsUri",
+        },
+        body: JSON.stringify({ textQuery: businessName, languageCode: "es" }),
+        signal: AbortSignal.timeout(10000),
       },
-      body: JSON.stringify({ textQuery: businessName, languageCode: "es" }),
-      signal: AbortSignal.timeout(10000),
-    });
+    );
 
     const json: {
       places?: Array<{
@@ -160,17 +180,20 @@ export async function searchPlaces(
   query: string,
 ): Promise<PlaceSearchResult[]> {
   try {
-    const response = await fetch("https://places.googleapis.com/v1/places:searchText", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Goog-Api-Key": getGooglePlacesApiKey(),
-        "X-Goog-FieldMask":
-          "places.id,places.displayName,places.formattedAddress,places.googleMapsUri,places.rating,places.userRatingCount",
+    const response = await fetch(
+      "https://places.googleapis.com/v1/places:searchText",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Goog-Api-Key": getGooglePlacesApiKey(),
+          "X-Goog-FieldMask":
+            "places.id,places.displayName,places.formattedAddress,places.googleMapsUri,places.rating,places.userRatingCount",
+        },
+        body: JSON.stringify({ textQuery: query, languageCode: "es" }),
+        signal: AbortSignal.timeout(10000),
       },
-      body: JSON.stringify({ textQuery: query, languageCode: "es" }),
-      signal: AbortSignal.timeout(10000),
-    });
+    );
 
     const json: {
       places?: Array<{
@@ -202,7 +225,10 @@ export async function searchPlaces(
  * Resuelve el ftid completo de una URL de Google Maps.
  * Estrategias: decode placeId, extracción de URL, seguir redirects, CID decimal.
  */
-export async function resolveFtid(url: string, placeId?: string): Promise<string | null> {
+export async function resolveFtid(
+  url: string,
+  placeId?: string,
+): Promise<string | null> {
   // 1. Decodificar ftid directamente del placeId (más rápido, sin API calls)
   if (placeId) {
     const decoded = decodeFtidFromPlaceId(placeId);
@@ -231,7 +257,8 @@ export async function resolveFtid(url: string, placeId?: string): Promise<string
   if (isValidFtid(ftid)) return ftid;
 
   // 5. CID decimal como fallback (formato parcial 0x0:0xHEX)
-  const cidFromUrl = url.match(/[?&]cid=(\d+)/) || resolved.match(/[?&]cid=(\d+)/);
+  const cidFromUrl =
+    url.match(/[?&]cid=(\d+)/) || resolved.match(/[?&]cid=(\d+)/);
   if (cidFromUrl) {
     return `0x0:0x${BigInt(cidFromUrl[1]).toString(16)}`;
   }
@@ -272,7 +299,9 @@ export async function fetchNameViaPlacesAPI(
  * Usa Google Places API oficial (Place Details) — funciona desde CF Workers.
  * Retorna la ficha actualizada con resultados.
  */
-export async function analyzeFicha(ficha: MultilangFicha): Promise<MultilangFicha> {
+export async function analyzeFicha(
+  ficha: MultilangFicha,
+): Promise<MultilangFicha> {
   let placeId: string | null = null;
 
   // 1. Si es nombre sin URL, buscar en Google Places
@@ -287,31 +316,46 @@ export async function analyzeFicha(ficha: MultilangFicha): Promise<MultilangFich
       if (decoded) {
         ficha.ftid = decoded;
       } else {
-        ficha.ftid = await resolveFtid(placeResult.mapsUrl, placeResult.placeId);
+        ficha.ftid = await resolveFtid(
+          placeResult.mapsUrl,
+          placeResult.placeId,
+        );
       }
     } else {
       return {
         ...ficha,
         status: "error",
-        error: "No se encontró la ficha por nombre. Añade la URL de Google Maps manualmente.",
+        error:
+          "No se encontró la ficha por nombre. Añade la URL de Google Maps manualmente.",
       };
     }
   }
 
   // 2. Si tenemos URL pero no placeId, buscar por nombre para obtener placeId
   if (!placeId && (ficha.baseName || ficha.inputName)) {
-    const placeResult = await searchPlaceByName(ficha.baseName || ficha.inputName || "");
+    const placeResult = await searchPlaceByName(
+      ficha.baseName || ficha.inputName || "",
+    );
     if (placeResult) {
       placeId = placeResult.placeId;
       if (!ficha.ftid) {
         const decoded = decodeFtidFromPlaceId(placeResult.placeId);
-        ficha.ftid = decoded || await resolveFtid(ficha.url || placeResult.mapsUrl, placeResult.placeId);
+        ficha.ftid =
+          decoded ||
+          (await resolveFtid(
+            ficha.url || placeResult.mapsUrl,
+            placeResult.placeId,
+          ));
       }
     }
   }
 
   if (!placeId) {
-    return { ...ficha, status: "error", error: "No se pudo obtener el placeId" };
+    return {
+      ...ficha,
+      status: "error",
+      error: "No se pudo obtener el placeId",
+    };
   }
 
   if (!ficha.ftid) {
@@ -372,7 +416,8 @@ export async function analyzeFicha(ficha: MultilangFicha): Promise<MultilangFich
   }
 
   // 4. Agrupar resultados
-  const baseName = results.find((r) => r.code === "es")?.title ?? results[0]?.title ?? "";
+  const baseName =
+    results.find((r) => r.code === "es")?.title ?? results[0]?.title ?? "";
   const nameMap = new Map<string, { code: string; name: string }[]>();
 
   for (const r of results) {
@@ -382,13 +427,17 @@ export async function analyzeFicha(ficha: MultilangFicha): Promise<MultilangFich
     else nameMap.set(r.title, [{ code: r.code, name: r.name }]);
   }
 
-  const variants: MultilangVariant[] = Array.from(nameMap.entries()).map(([name, languages]) => ({
-    name,
-    languages,
-    discoveredAt: null,
-  }));
+  const variants: MultilangVariant[] = Array.from(nameMap.entries()).map(
+    ([name, languages]) => ({
+      name,
+      languages,
+      discoveredAt: null,
+    }),
+  );
 
-  const baseLanguages = results.filter((r) => r.title === baseName).map((r) => ({ code: r.code, name: r.name }));
+  const baseLanguages = results
+    .filter((r) => r.title === baseName)
+    .map((r) => ({ code: r.code, name: r.name }));
 
   return {
     ...ficha,

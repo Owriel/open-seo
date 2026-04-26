@@ -1,5 +1,5 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { useMutation } from "@tanstack/react-query";
 import {
@@ -11,23 +11,53 @@ import {
   Lightbulb,
   FileDown,
   ExternalLink,
+  Sparkles,
 } from "lucide-react";
 import { analyzeSerpResults } from "@/serverFunctions/serp";
-import type { SerpAnalysisResult, SerpFeature, SerpRecommendation } from "@/types/serp";
+import type {
+  SerpAnalysisResult,
+  SerpFeature,
+  SerpRecommendation,
+} from "@/types/serp";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
 import { LOCATIONS, getLanguageCode } from "@/client/features/keywords/utils";
+import { useProjectContext } from "@/client/hooks/useProjectContext";
 
 export const Route = createFileRoute("/p/$projectId/serp")({
   component: SerpAnalysisPage,
 });
 
 function SerpAnalysisPage() {
+  const { projectId } = Route.useParams();
+  // Contexto del proyecto → defaults iniciales del form.
+  const { project, locationCode: projectLocationCode } =
+    useProjectContext(projectId);
   const [keyword, setKeyword] = useState("");
   const [locationCode, setLocationCode] = useState(2724);
 
+  // Pre-rellenamos cuando el proyecto se carga, solo si el campo está vacío
+  // (no pisamos lo que haya escrito el usuario).
+  useEffect(() => {
+    if (!project) return;
+    if (keyword === "" && project.targetKeyword) {
+      setKeyword(project.targetKeyword);
+    }
+    // locationCode default es 2724 (España). Si el proyecto tiene otro país
+    // configurado, lo aplicamos. useEffect se dispara una sola vez con los
+    // deps: suficiente para un default.
+    if (projectLocationCode != null && locationCode === 2724) {
+      setLocationCode(projectLocationCode);
+    }
+    // Deps intencionadas: sólo queremos reaccionar a la llegada del proyecto.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [project, projectLocationCode]);
+
   const serpMutation = useMutation({
-    mutationFn: (data: { keyword: string; locationCode: number; languageCode: string }) =>
-      analyzeSerpResults({ data }),
+    mutationFn: (data: {
+      keyword: string;
+      locationCode: number;
+      languageCode: string;
+    }) => analyzeSerpResults({ data }),
   });
 
   const result = serpMutation.data ?? null;
@@ -49,7 +79,13 @@ function SerpAnalysisPage() {
     if (!result || result.topResults.length === 0) return;
     const headers = ["Posición", "Título", "URL", "Dominio", "ETV"];
     const csvRows = result.topResults.map((r) =>
-      [r.position, `"${r.title.replace(/"/g, '""')}"`, `"${r.url}"`, r.domain, r.etv ?? ""].join(","),
+      [
+        r.position,
+        `"${r.title.replace(/"/g, '""')}"`,
+        `"${r.url}"`,
+        r.domain,
+        r.etv ?? "",
+      ].join(","),
     );
     const csv = [headers.join(","), ...csvRows].join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
@@ -67,7 +103,8 @@ function SerpAnalysisPage() {
       <div className="shrink-0 px-4 md:px-6 pt-4 pb-2 max-w-8xl mx-auto w-full">
         <h1 className="text-xl font-bold mb-1">Análisis SERP</h1>
         <p className="text-sm text-base-content/60 mb-3">
-          Analiza los top 10 resultados orgánicos, features de la SERP y obtén recomendaciones SEO.
+          Analiza los top 10 resultados orgánicos, features de la SERP y obtén
+          recomendaciones SEO.
         </p>
 
         <form
@@ -113,8 +150,16 @@ function SerpAnalysisPage() {
             <LoadingState />
           ) : serpMutation.isError ? (
             <div className="mt-4 rounded-xl border border-error/30 bg-error/10 p-5 text-error">
-              <p className="text-sm">{getStandardErrorMessage(serpMutation.error, "Error analizando SERP")}</p>
-              <button className="btn btn-sm mt-2" onClick={() => serpMutation.reset()}>
+              <p className="text-sm">
+                {getStandardErrorMessage(
+                  serpMutation.error,
+                  "Error analizando SERP",
+                )}
+              </p>
+              <button
+                className="btn btn-sm mt-2"
+                onClick={() => serpMutation.reset()}
+              >
                 Reintentar
               </button>
             </div>
@@ -127,7 +172,10 @@ function SerpAnalysisPage() {
               </div>
 
               {/* Top 10 */}
-              <TopResultsPanel results={result.topResults} onExport={handleExportCsv} />
+              <TopResultsPanel
+                results={result.topResults}
+                onExport={handleExportCsv}
+              />
 
               {/* Dominios dominantes */}
               {result.dominantDomains.length > 0 && (
@@ -136,19 +184,59 @@ function SerpAnalysisPage() {
 
               {/* Recomendaciones */}
               {result.recommendations.length > 0 && (
-                <RecommendationsPanel recommendations={result.recommendations} />
+                <RecommendationsPanel
+                  recommendations={result.recommendations}
+                />
               )}
             </div>
+          ) : project?.targetKeyword ? (
+            /* CTA específico: el proyecto tiene keyword configurada */
+            <div className="mt-8 text-center space-y-3">
+              <Sparkles className="size-12 mx-auto text-primary" />
+              <p className="text-lg font-semibold text-base-content">
+                Analiza la SERP de &ldquo;{project.targetKeyword}&rdquo;
+              </p>
+              <p className="text-sm text-base-content/60 max-w-md mx-auto">
+                Te mostraremos los top 10 resultados orgánicos, features
+                activas, dominios dominantes y recomendaciones SEO.
+              </p>
+              <button
+                className="btn btn-sm btn-primary gap-1"
+                onClick={() => {
+                  setKeyword(project.targetKeyword ?? "");
+                  serpMutation.mutate({
+                    keyword: (project.targetKeyword ?? "").trim().toLowerCase(),
+                    locationCode,
+                    languageCode: getLanguageCode(locationCode),
+                  });
+                }}
+              >
+                <Search className="size-3.5" />
+                Analizar ahora
+              </button>
+            </div>
           ) : (
-            /* Empty state */
+            /* Empty state genérico */
             <div className="mt-8 text-center space-y-3">
               <BarChart3 className="size-12 mx-auto text-base-content/30" />
               <p className="text-lg font-medium text-base-content/70">
                 Introduce una keyword para analizar la SERP
               </p>
               <p className="text-sm text-base-content/50 max-w-md mx-auto">
-                Verás los top 10 resultados orgánicos, features activas (featured snippet, FAQ, video...),
-                dominios dominantes y recomendaciones SEO personalizadas.
+                Verás los top 10 resultados orgánicos, features activas
+                (featured snippet, FAQ, video...), dominios dominantes y
+                recomendaciones SEO personalizadas.
+              </p>
+              <p className="text-xs text-base-content/40">
+                Sugerencia: configura una keyword objetivo en{" "}
+                <Link
+                  to="/p/$projectId/settings"
+                  params={{ projectId }}
+                  className="link link-primary"
+                >
+                  ajustes del proyecto
+                </Link>
+                .
               </p>
             </div>
           )}
@@ -175,7 +263,11 @@ function FeaturesPanel({ features }: { features: SerpFeature[] }) {
             key={f.type}
             className={`badge badge-sm gap-1 ${f.present ? "badge-success" : "badge-ghost text-base-content/40"}`}
           >
-            {f.present ? <CheckCircle className="size-3" /> : <XCircle className="size-3" />}
+            {f.present ? (
+              <CheckCircle className="size-3" />
+            ) : (
+              <XCircle className="size-3" />
+            )}
             {f.label}
           </span>
         ))}
@@ -184,7 +276,11 @@ function FeaturesPanel({ features }: { features: SerpFeature[] }) {
   );
 }
 
-function IntentPanel({ intent }: { intent: SerpAnalysisResult["intentAnalysis"] }) {
+function IntentPanel({
+  intent,
+}: {
+  intent: SerpAnalysisResult["intentAnalysis"];
+}) {
   const intentColors: Record<string, string> = {
     informacional: "badge-info",
     transaccional: "badge-success",
@@ -199,7 +295,9 @@ function IntentPanel({ intent }: { intent: SerpAnalysisResult["intentAnalysis"] 
         Análisis de Intent
       </h2>
       <div className="mb-2">
-        <span className={`badge ${intentColors[intent.primaryIntent] ?? "badge-ghost"} capitalize`}>
+        <span
+          className={`badge ${intentColors[intent.primaryIntent] ?? "badge-ghost"} capitalize`}
+        >
           {intent.primaryIntent}
         </span>
       </div>
@@ -248,7 +346,11 @@ function TopResultsPanel({
                 <td>
                   <span
                     className={`badge badge-sm ${
-                      r.position <= 3 ? "badge-success" : r.position <= 10 ? "badge-warning" : "badge-ghost"
+                      r.position <= 3
+                        ? "badge-success"
+                        : r.position <= 10
+                          ? "badge-warning"
+                          : "badge-ghost"
                     }`}
                   >
                     {r.position}
@@ -258,7 +360,10 @@ function TopResultsPanel({
                   <div className="font-medium text-sm truncate" title={r.title}>
                     {r.title}
                   </div>
-                  <div className="text-xs text-base-content/40 truncate" title={r.url}>
+                  <div
+                    className="text-xs text-base-content/40 truncate"
+                    title={r.url}
+                  >
                     {r.url}
                   </div>
                 </td>
@@ -287,7 +392,11 @@ function TopResultsPanel({
   );
 }
 
-function DominantDomainsPanel({ domains }: { domains: SerpAnalysisResult["dominantDomains"] }) {
+function DominantDomainsPanel({
+  domains,
+}: {
+  domains: SerpAnalysisResult["dominantDomains"];
+}) {
   return (
     <div className="border border-base-300 rounded-xl bg-base-100 p-4">
       <h2 className="font-semibold text-sm mb-3 flex items-center gap-2">
@@ -298,7 +407,9 @@ function DominantDomainsPanel({ domains }: { domains: SerpAnalysisResult["domina
         {domains.map((d) => (
           <span key={d.domain} className="badge badge-sm badge-outline gap-1">
             {d.domain}
-            {d.count > 1 && <span className="badge badge-xs badge-primary">{d.count}</span>}
+            {d.count > 1 && (
+              <span className="badge badge-xs badge-primary">{d.count}</span>
+            )}
           </span>
         ))}
       </div>
@@ -306,7 +417,11 @@ function DominantDomainsPanel({ domains }: { domains: SerpAnalysisResult["domina
   );
 }
 
-function RecommendationsPanel({ recommendations }: { recommendations: SerpRecommendation[] }) {
+function RecommendationsPanel({
+  recommendations,
+}: {
+  recommendations: SerpRecommendation[];
+}) {
   const priorityColors: Record<string, string> = {
     alta: "border-l-success",
     media: "border-l-warning",

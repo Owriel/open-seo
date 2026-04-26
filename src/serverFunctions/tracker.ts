@@ -21,14 +21,17 @@ export const addTrackedKeywords = createServerFn({ method: "POST" })
     for (const keyword of data.keywords) {
       const id = crypto.randomUUID();
       try {
-        await db.insert(trackedKeywords).values({
-          id,
-          projectId: data.projectId,
-          keyword: keyword.toLowerCase().trim(),
-          domain: data.domain.toLowerCase().trim(),
-          locationCode: data.locationCode,
-          languageCode: data.languageCode,
-        }).onConflictDoNothing();
+        await db
+          .insert(trackedKeywords)
+          .values({
+            id,
+            projectId: data.projectId,
+            keyword: keyword.toLowerCase().trim(),
+            domain: data.domain.toLowerCase().trim(),
+            locationCode: data.locationCode,
+            languageCode: data.languageCode,
+          })
+          .onConflictDoNothing();
         results.push(keyword);
       } catch {
         // Skip duplicates
@@ -42,7 +45,9 @@ export const removeTrackedKeyword = createServerFn({ method: "POST" })
   .middleware(authenticatedServerFunctionMiddleware)
   .inputValidator((data: unknown) => removeTrackedKeywordSchema.parse(data))
   .handler(async ({ data }) => {
-    await db.delete(trackedKeywords).where(eq(trackedKeywords.id, data.trackedKeywordId));
+    await db
+      .delete(trackedKeywords)
+      .where(eq(trackedKeywords.id, data.trackedKeywordId));
     return { success: true };
   });
 
@@ -81,9 +86,10 @@ export const getTrackedKeywords = createServerFn({ method: "POST" })
 
       const currentPos = current?.position ?? null;
       const previousPos = previous?.position ?? null;
-      const change = currentPos != null && previousPos != null
-        ? previousPos - currentPos // positive = improved (went up)
-        : null;
+      const change =
+        currentPos != null && previousPos != null
+          ? previousPos - currentPos // positive = improved (went up)
+          : null;
 
       keywords.push({
         id: tk.id,
@@ -131,7 +137,10 @@ export const checkRankings = createServerFn({ method: "POST" })
 
         for (const item of serpItems) {
           const itemDomain = (item.domain ?? "").toLowerCase();
-          if (itemDomain.includes(domainLower) || domainLower.includes(itemDomain)) {
+          if (
+            itemDomain.includes(domainLower) ||
+            domainLower.includes(itemDomain)
+          ) {
             position = item.rank_absolute ?? item.rank_group ?? null;
             url = item.url ?? null;
             break;

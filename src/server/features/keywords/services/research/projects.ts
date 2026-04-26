@@ -56,10 +56,18 @@ export async function getOrCreateDefaultProject(userId: string) {
 export async function getProject(userId: string, projectId: string) {
   const project = await KeywordResearchRepository.getProject(projectId, userId);
   if (!project) return null;
+  // Devolvemos también los campos de contexto para que cualquier módulo
+  // (Keywords, Dominio, SERP, Reseñas, etc.) pueda usar estos valores como
+  // defaults de sus formularios.
   return {
     id: project.id,
     name: project.name,
     domain: project.domain,
+    targetKeyword: project.targetKeyword,
+    locationName: project.locationName,
+    languageCode: project.languageCode,
+    placeId: project.placeId,
+    businessName: project.businessName,
     createdAt: project.createdAt,
   };
 }

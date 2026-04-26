@@ -17,9 +17,7 @@ import {
   normalizeDomainInput,
   type DomainRankedKeywordItem,
 } from "@/server/lib/dataforseo";
-import {
-  analyzeOpportunities,
-} from "@/server/lib/opportunities";
+import { analyzeOpportunities } from "@/server/lib/opportunities";
 import {
   buildCacheKey,
   getCached,
@@ -87,7 +85,10 @@ async function getGscTokens(projectId: string): Promise<GscTokens | null> {
   }
 }
 
-async function refreshGscAccessToken(projectId: string, tokens: GscTokens): Promise<GscTokens | null> {
+async function refreshGscAccessToken(
+  projectId: string,
+  tokens: GscTokens,
+): Promise<GscTokens | null> {
   const clientId = env.GOOGLE_CLIENT_ID;
   const clientSecret = env.GOOGLE_CLIENT_SECRET;
   if (!clientId || !clientSecret) return null;
@@ -133,7 +134,9 @@ async function getValidGscToken(projectId: string): Promise<string | null> {
 // Normalización de datos de DataForSEO a OpportunityKeyword
 // ---------------------------------------------------------------------------
 
-function normalizeDataforseoItem(item: DomainRankedKeywordItem): OpportunityKeyword | null {
+function normalizeDataforseoItem(
+  item: DomainRankedKeywordItem,
+): OpportunityKeyword | null {
   const keywordData = item.keyword_data;
   const keywordInfo = keywordData?.keyword_info;
   const keywordProperties = keywordData?.keyword_properties;
@@ -144,7 +147,8 @@ function normalizeDataforseoItem(item: DomainRankedKeywordItem): OpportunityKeyw
   if (!keyword) return null;
 
   const url = serpItem?.url ?? rankedSerpElement?.url ?? null;
-  const position = serpItem?.rank_absolute ?? rankedSerpElement?.rank_absolute ?? null;
+  const position =
+    serpItem?.rank_absolute ?? rankedSerpElement?.rank_absolute ?? null;
   const traffic = serpItem?.etv ?? rankedSerpElement?.etv ?? null;
 
   return {
@@ -154,10 +158,14 @@ function normalizeDataforseoItem(item: DomainRankedKeywordItem): OpportunityKeyw
     clicks: null, // DataForSEO no tiene clics reales de GSC
     impressions: null,
     ctr: null,
-    searchVolume: keywordInfo?.search_volume != null ? Math.round(keywordInfo.search_volume) : null,
-    keywordDifficulty: keywordProperties?.keyword_difficulty != null
-      ? Math.round(keywordProperties.keyword_difficulty)
-      : null,
+    searchVolume:
+      keywordInfo?.search_volume != null
+        ? Math.round(keywordInfo.search_volume)
+        : null,
+    keywordDifficulty:
+      keywordProperties?.keyword_difficulty != null
+        ? Math.round(keywordProperties.keyword_difficulty)
+        : null,
     cpc: keywordInfo?.cpc ?? null,
     traffic: traffic ?? null,
   };
@@ -180,7 +188,9 @@ export const analyzeWithDataforseo = createServerFn({ method: "POST" })
       languageCode: data.languageCode,
     });
 
-    const cached = await getCached<{ keywords: OpportunityKeyword[] }>(cacheKey);
+    const cached = await getCached<{ keywords: OpportunityKeyword[] }>(
+      cacheKey,
+    );
     let keywords: OpportunityKeyword[];
 
     if (cached?.keywords?.length) {
@@ -208,7 +218,10 @@ export const analyzeWithDataforseo = createServerFn({ method: "POST" })
     }
 
     // Analizar oportunidades
-    const { results, cannibalization } = analyzeOpportunities(keywords, data.filters);
+    const { results, cannibalization } = analyzeOpportunities(
+      keywords,
+      data.filters,
+    );
 
     return {
       results,
@@ -241,7 +254,10 @@ export const analyzeWithCsv = createServerFn({ method: "POST" })
       traffic: null,
     }));
 
-    const { results, cannibalization } = analyzeOpportunities(keywords, data.filters);
+    const { results, cannibalization } = analyzeOpportunities(
+      keywords,
+      data.filters,
+    );
 
     return {
       results,
@@ -263,7 +279,10 @@ export const getGscAuthUrl = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const clientId = env.GOOGLE_CLIENT_ID;
     if (!clientId) {
-      return { url: null, error: "GOOGLE_CLIENT_ID no configurado en wrangler.jsonc" };
+      return {
+        url: null,
+        error: "GOOGLE_CLIENT_ID no configurado en wrangler.jsonc",
+      };
     }
 
     // Construir redirect URI dinámicamente
@@ -275,7 +294,8 @@ export const getGscAuthUrl = createServerFn({ method: "POST" })
       client_id: clientId,
       redirect_uri: redirectUri,
       response_type: "code",
-      scope: "https://www.googleapis.com/auth/webmasters.readonly https://www.googleapis.com/auth/userinfo.email",
+      scope:
+        "https://www.googleapis.com/auth/webmasters.readonly https://www.googleapis.com/auth/userinfo.email",
       access_type: "offline",
       prompt: "consent",
       state: data.projectId,
@@ -329,9 +349,12 @@ export const handleGscCallback = createServerFn({ method: "POST" })
     // Obtener email del usuario
     let email: string | null = null;
     try {
-      const userResp = await fetch("https://www.googleapis.com/oauth2/v2/userinfo", {
-        headers: { Authorization: `Bearer ${tokenData.access_token}` },
-      });
+      const userResp = await fetch(
+        "https://www.googleapis.com/oauth2/v2/userinfo",
+        {
+          headers: { Authorization: `Bearer ${tokenData.access_token}` },
+        },
+      );
       if (userResp.ok) {
         const userData: { email: string } = await userResp.json();
         email = userData.email;
@@ -369,13 +392,17 @@ export const getGscStatus = createServerFn({ method: "POST" })
     }
 
     try {
-      const resp = await fetch("https://www.googleapis.com/webmasters/v3/sites", {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
+      const resp = await fetch(
+        "https://www.googleapis.com/webmasters/v3/sites",
+        {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        },
+      );
       if (!resp.ok) {
         return { connected: false, email: tokens.email, properties: null };
       }
-      const sitesData: { siteEntry?: Array<{ siteUrl: string }> } = await resp.json();
+      const sitesData: { siteEntry?: Array<{ siteUrl: string }> } =
+        await resp.json();
       const properties = (sitesData.siteEntry ?? []).map((s) => s.siteUrl);
       return { connected: true, email: tokens.email, properties };
     } catch {
@@ -401,14 +428,21 @@ export const analyzeWithGsc = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const accessToken = await getValidGscToken(data.projectId);
     if (!accessToken) {
-      throw new Error("GSC no conectado. Conecta tu cuenta de Google Search Console primero.");
+      throw new Error(
+        "GSC no conectado. Conecta tu cuenta de Google Search Console primero.",
+      );
     }
 
     // Calcular rango de fechas
     const endDate = new Date();
     const startDate = new Date();
     const rangeMap: Record<string, number> = {
-      "7d": 7, "28d": 28, "3m": 90, "6m": 180, "12m": 365, "16m": 480,
+      "7d": 7,
+      "28d": 28,
+      "3m": 90,
+      "6m": 180,
+      "12m": 365,
+      "16m": 480,
     };
     startDate.setDate(startDate.getDate() - (rangeMap[data.dateRange] ?? 90));
 
@@ -453,7 +487,8 @@ export const analyzeWithGsc = createServerFn({ method: "POST" })
     const keywords: OpportunityKeyword[] = rows.map((row) => ({
       keyword: row.keys[0],
       url: row.keys[1] ?? null,
-      position: row.position != null ? Math.round(row.position * 10) / 10 : null,
+      position:
+        row.position != null ? Math.round(row.position * 10) / 10 : null,
       clicks: row.clicks,
       impressions: row.impressions,
       ctr: row.ctr != null ? Math.round(row.ctr * 10000) / 100 : null, // GSC devuelve decimal, convertir a %
@@ -463,7 +498,10 @@ export const analyzeWithGsc = createServerFn({ method: "POST" })
       traffic: null,
     }));
 
-    const { results, cannibalization } = analyzeOpportunities(keywords, data.filters);
+    const { results, cannibalization } = analyzeOpportunities(
+      keywords,
+      data.filters,
+    );
 
     return {
       results,
@@ -495,7 +533,10 @@ export const saveOpportunityAnalysis = createServerFn({ method: "POST" })
       filters: data.filters,
     };
 
-    await env.KV.put(analysisKey(data.projectId, analysisId), JSON.stringify(analysis));
+    await env.KV.put(
+      analysisKey(data.projectId, analysisId),
+      JSON.stringify(analysis),
+    );
 
     const index = await loadAnalysisIndex(data.projectId);
     index.unshift(analysisId);

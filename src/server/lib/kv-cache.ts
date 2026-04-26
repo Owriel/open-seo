@@ -87,9 +87,12 @@ export async function setCached<T>(
   });
 
   // Store metadata in D1
-  const _prefix = key.split(":")[0] + (key.includes(":") ? ":" + key.split(":")[1]?.split(":")[0] : "");
+  const _prefix =
+    key.split(":")[0] +
+    (key.includes(":") ? ":" + key.split(":")[1]?.split(":")[0] : "");
   const categoryPrefix = key.substring(0, key.lastIndexOf(":"));
-  const label = meta?.label ?? CATEGORY_LABELS[categoryPrefix] ?? categoryPrefix;
+  const label =
+    meta?.label ?? CATEGORY_LABELS[categoryPrefix] ?? categoryPrefix;
   const expiresAt = new Date(Date.now() + ttlSeconds * 1000).toISOString();
 
   try {
@@ -132,7 +135,9 @@ export async function extendCached(key: string): Promise<boolean> {
   await env.KV.put(key, value, { expirationTtl: CACHE_TTL_SECONDS });
 
   // Update D1 metadata
-  const newExpiresAt = new Date(Date.now() + CACHE_TTL_SECONDS * 1000).toISOString();
+  const newExpiresAt = new Date(
+    Date.now() + CACHE_TTL_SECONDS * 1000,
+  ).toISOString();
   await db
     .update(cacheEntries)
     .set({

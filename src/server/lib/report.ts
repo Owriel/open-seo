@@ -34,23 +34,30 @@ export function scoreVisibility(data: ReportVisibility): SectionScore {
   let score = 0;
 
   // Keywords en top 10
-  const top10Count = data.topKeywords.filter((k) => k.position != null && k.position <= 10).length;
-  const top3Count = data.topKeywords.filter((k) => k.position != null && k.position <= 3).length;
+  const top10Count = data.topKeywords.filter(
+    (k) => k.position != null && k.position <= 10,
+  ).length;
+  const top3Count = data.topKeywords.filter(
+    (k) => k.position != null && k.position <= 3,
+  ).length;
 
   // Tráfico estimado (log scale)
   const traffic = data.organicTraffic ?? 0;
-  const trafficScore = traffic > 0 ? clamp(Math.log10(traffic + 1) / 4 * 100, 0, 100) : 0;
+  const trafficScore =
+    traffic > 0 ? clamp((Math.log10(traffic + 1) / 4) * 100, 0, 100) : 0;
 
   // Keywords rankeadas
   const kwCount = data.organicKeywords ?? 0;
-  const kwScore = kwCount > 0 ? clamp(Math.log10(kwCount + 1) / 3 * 100, 0, 100) : 0;
+  const kwScore =
+    kwCount > 0 ? clamp((Math.log10(kwCount + 1) / 3) * 100, 0, 100) : 0;
 
   // Top 10 ratio
-  const top10Score = data.topKeywords.length > 0
-    ? (top10Count / data.topKeywords.length) * 100
-    : 0;
+  const top10Score =
+    data.topKeywords.length > 0
+      ? (top10Count / data.topKeywords.length) * 100
+      : 0;
 
-  score = Math.round(trafficScore * 0.35 + kwScore * 0.30 + top10Score * 0.35);
+  score = Math.round(trafficScore * 0.35 + kwScore * 0.3 + top10Score * 0.35);
 
   let summary: string;
   if (score >= 70) {
@@ -66,14 +73,15 @@ export function scoreVisibility(data: ReportVisibility): SectionScore {
 
 export function scoreOpportunities(data: ReportOpportunities): SectionScore {
   // Más oportunidades = peor nota (significa más potencial sin explotar)
-  const ratio = data.totalKeywords > 0
-    ? data.totalOpportunities / data.totalKeywords
-    : 0;
+  const ratio =
+    data.totalKeywords > 0 ? data.totalOpportunities / data.totalKeywords : 0;
 
   // Invertir: si 80%+ son oportunidades = mal, si <20% = bien
   const score = Math.round(clamp((1 - ratio) * 100, 0, 100));
 
-  const nearTop3 = data.results.filter((r) => r.opportunityType.includes("near_top3")).length;
+  const nearTop3 = data.results.filter((r) =>
+    r.opportunityType.includes("near_top3"),
+  ).length;
   const cannibCount = data.cannibalization.length;
 
   let summary: string;
@@ -88,12 +96,21 @@ export function scoreOpportunities(data: ReportOpportunities): SectionScore {
   return { score, color: scoreColor(score), summary };
 }
 
-export function scoreCompetitors(data: ReportCompetitors, ourTraffic: number | null): SectionScore {
+export function scoreCompetitors(
+  data: ReportCompetitors,
+  ourTraffic: number | null,
+): SectionScore {
   if (data.competitors.length === 0) {
-    return { score: 50, color: "yellow", summary: "No se encontraron competidores orgánicos directos." };
+    return {
+      score: 50,
+      color: "yellow",
+      summary: "No se encontraron competidores orgánicos directos.",
+    };
   }
 
-  const avgCompTraffic = data.competitors.slice(0, 3).reduce((s, c) => s + c.organicTraffic, 0) / Math.min(3, data.competitors.length);
+  const avgCompTraffic =
+    data.competitors.slice(0, 3).reduce((s, c) => s + c.organicTraffic, 0) /
+    Math.min(3, data.competitors.length);
   const our = ourTraffic ?? 0;
 
   let score: number;
@@ -118,9 +135,17 @@ export function scoreCompetitors(data: ReportCompetitors, ourTraffic: number | n
   return { score, color: scoreColor(score), summary };
 }
 
-export function scoreContentGap(data: ReportContentGap, ourKeywordCount: number | null): SectionScore {
+export function scoreContentGap(
+  data: ReportContentGap,
+  ourKeywordCount: number | null,
+): SectionScore {
   if (data.keywords.length === 0) {
-    return { score: 85, color: "green", summary: "Tu competidor principal no tiene keywords significativas que tú no tengas." };
+    return {
+      score: 85,
+      color: "green",
+      summary:
+        "Tu competidor principal no tiene keywords significativas que tú no tengas.",
+    };
   }
 
   const gapCount = data.keywords.length;
@@ -130,7 +155,9 @@ export function scoreContentGap(data: ReportContentGap, ourKeywordCount: number 
   // Menos gaps = mejor
   const score = Math.round(clamp((1 - Math.min(ratio, 1)) * 100, 10, 95));
 
-  const highVolumeGaps = data.keywords.filter((k) => (k.searchVolume ?? 0) > 100).length;
+  const highVolumeGaps = data.keywords.filter(
+    (k) => (k.searchVolume ?? 0) > 100,
+  ).length;
 
   let summary: string;
   if (score >= 70) {
@@ -146,7 +173,12 @@ export function scoreContentGap(data: ReportContentGap, ourKeywordCount: number 
 
 export function scoreLocal(data: ReportLocal | null): SectionScore {
   if (!data) {
-    return { score: 50, color: "yellow", summary: "No se proporcionó keyword principal para analizar presencia local." };
+    return {
+      score: 50,
+      color: "yellow",
+      summary:
+        "No se proporcionó keyword principal para analizar presencia local.",
+    };
   }
 
   let score = 0;
@@ -176,9 +208,12 @@ export function scoreLocal(data: ReportLocal | null): SectionScore {
   if (data.ourPosition != null) {
     summary = `Apareces en la posición ${data.ourPosition} de Google Maps para "${data.keyword}"`;
     if (data.ourRating != null) summary += ` con ${data.ourRating} estrellas`;
-    if (data.ourReviewCount != null) summary += ` y ${data.ourReviewCount} reseñas`;
+    if (data.ourReviewCount != null)
+      summary += ` y ${data.ourReviewCount} reseñas`;
     summary += ".";
-    if (data.ourPosition > 3) summary += " Mejorar reseñas y optimizar tu ficha puede subir te al top 3.";
+    if (data.ourPosition > 3)
+      summary +=
+        " Mejorar reseñas y optimizar tu ficha puede subir te al top 3.";
   } else {
     score = Math.max(score, 15);
     summary = `No apareces en Google Maps cuando buscan "${data.keyword}". Esto significa que pierdes clientes que buscan tu servicio en la zona.`;
@@ -189,7 +224,11 @@ export function scoreLocal(data: ReportLocal | null): SectionScore {
 
 export function scoreTechnical(data: ReportTechnicalHealth): SectionScore {
   if (data.pagesCrawled === 0) {
-    return { score: 0, color: "red", summary: "No se pudo acceder a la web para analizarla." };
+    return {
+      score: 0,
+      color: "red",
+      summary: "No se pudo acceder a la web para analizarla.",
+    };
   }
 
   // Penalizar por issues
@@ -197,7 +236,11 @@ export function scoreTechnical(data: ReportTechnicalHealth): SectionScore {
   const warningPenalty = data.warningCount * 5;
   const infoPenalty = data.infoCount * 1;
 
-  const score = clamp(100 - criticalPenalty - warningPenalty - infoPenalty, 0, 100);
+  const score = clamp(
+    100 - criticalPenalty - warningPenalty - infoPenalty,
+    0,
+    100,
+  );
 
   let summary: string;
   if (score >= 70) {
@@ -233,19 +276,36 @@ export function scoreGbp(data: ReportGbp | null): SectionScore | null {
 // Scoring global
 // ---------------------------------------------------------------------------
 
-export function calculateScores(
-  visibility: ReportVisibility,
-  opportunities: ReportOpportunities,
-  competitors: ReportCompetitors,
-  contentGap: ReportContentGap,
-  local: ReportLocal | null,
-  technical: ReportTechnicalHealth,
-  gbp: ReportGbp | null,
-): ReportScores {
+type CalculateScoresInput = {
+  visibility: ReportVisibility;
+  opportunities: ReportOpportunities;
+  competitors: ReportCompetitors;
+  contentGap: ReportContentGap;
+  local: ReportLocal | null;
+  technical: ReportTechnicalHealth;
+  gbp: ReportGbp | null;
+};
+
+export function calculateScores(input: CalculateScoresInput): ReportScores {
+  const {
+    visibility,
+    opportunities,
+    competitors,
+    contentGap,
+    local,
+    technical,
+    gbp,
+  } = input;
   const visibilityScore = scoreVisibility(visibility);
   const opportunitiesScore = scoreOpportunities(opportunities);
-  const competitorsScore = scoreCompetitors(competitors, visibility.organicTraffic);
-  const contentGapScore = scoreContentGap(contentGap, visibility.organicKeywords);
+  const competitorsScore = scoreCompetitors(
+    competitors,
+    visibility.organicTraffic,
+  );
+  const contentGapScore = scoreContentGap(
+    contentGap,
+    visibility.organicKeywords,
+  );
   const localScore = scoreLocal(local);
   const technicalScore = scoreTechnical(technical);
   const gbpScore = scoreGbp(gbp);
@@ -253,11 +313,11 @@ export function calculateScores(
   // Media ponderada para la puntuación global
   const weights = {
     visibility: 0.25,
-    opportunities: 0.20,
+    opportunities: 0.2,
     competitors: 0.15,
-    contentGap: 0.10,
+    contentGap: 0.1,
     local: 0.15,
-    technical: 0.10,
+    technical: 0.1,
     gbp: 0.05,
   };
 
@@ -282,15 +342,22 @@ export function calculateScores(
 
   let globalSummary: string;
   if (normalizedGlobal >= 70) {
-    globalSummary = "Tu web tiene una buena base SEO. Hay oportunidades puntuales de mejora para crecer más.";
+    globalSummary =
+      "Tu web tiene una buena base SEO. Hay oportunidades puntuales de mejora para crecer más.";
   } else if (normalizedGlobal >= 40) {
-    globalSummary = "Tu web tiene visibilidad en Google pero necesita mejoras en varias áreas para competir mejor.";
+    globalSummary =
+      "Tu web tiene visibilidad en Google pero necesita mejoras en varias áreas para competir mejor.";
   } else {
-    globalSummary = "Tu web necesita trabajo urgente en SEO. Hay problemas que están frenando tu posicionamiento en Google.";
+    globalSummary =
+      "Tu web necesita trabajo urgente en SEO. Hay problemas que están frenando tu posicionamiento en Google.";
   }
 
   return {
-    global: { score: normalizedGlobal, color: scoreColor(normalizedGlobal), summary: globalSummary },
+    global: {
+      score: normalizedGlobal,
+      color: scoreColor(normalizedGlobal),
+      summary: globalSummary,
+    },
     visibility: visibilityScore,
     opportunities: opportunitiesScore,
     competitors: competitorsScore,

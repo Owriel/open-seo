@@ -8,6 +8,7 @@ import {
   normalizeSortField,
 } from "@/client/features/keywords/keywordSearchParams";
 import { keywordsSearchSchema } from "@/types/schemas/keywords";
+import { useProjectContext } from "@/client/hooks/useProjectContext";
 
 export const Route = createFileRoute("/p/$projectId/keywords")({
   validateSearch: keywordsSearchSchema,
@@ -28,19 +29,28 @@ export const Route = createFileRoute("/p/$projectId/keywords")({
 function KeywordResearchPageRoute() {
   const { projectId } = Route.useParams();
   const {
-    q: keywordInput = "",
-    loc: locationCode = 2840,
+    q: keywordInput,
+    loc: locationCode,
     kLimit: resultLimit = 150,
     mode: keywordMode = "auto",
     sort: sortField = "searchVolume",
     order: sortDir = "desc",
   } = Route.useSearch();
 
+  // Contexto del proyecto: si la URL no trae q/loc, usamos los del proyecto
+  // como defaults. El usuario sigue pudiendo sobrescribir desde el form.
+  const { project, locationCode: projectLocationCode } =
+    useProjectContext(projectId);
+
+  const effectiveKeyword = keywordInput ?? project?.targetKeyword ?? "";
+  // Default 2724 = España (mercado principal del producto).
+  const effectiveLocationCode = locationCode ?? projectLocationCode ?? 2724;
+
   return (
     <KeywordResearchPage
       projectId={projectId}
-      keywordInput={keywordInput}
-      locationCode={locationCode}
+      keywordInput={effectiveKeyword}
+      locationCode={effectiveLocationCode}
       resultLimit={isResultLimit(resultLimit) ? resultLimit : 150}
       keywordMode={normalizeKeywordMode(keywordMode)}
       sortField={normalizeSortField(sortField)}

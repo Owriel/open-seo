@@ -85,7 +85,9 @@ export const searchLocalPack = createServerFn({ method: "POST" })
           ratingDistribution: item.rating_distribution ?? null,
           position: item.rank_group ?? idx + 1,
           category: item.category ?? null,
-          additionalCategories: (item.additional_categories ?? []).filter(Boolean),
+          additionalCategories: (item.additional_categories ?? []).filter(
+            Boolean,
+          ),
           address: item.address ?? null,
           city: item.address_info?.city ?? null,
           phone: item.phone ?? null,
@@ -120,61 +122,81 @@ export const searchLocalPack = createServerFn({ method: "POST" })
 export const getLocalKeywordSuggestions = createServerFn({ method: "POST" })
   .middleware(authenticatedServerFunctionMiddleware)
   .inputValidator((data: unknown) => localKeywordSuggestionsSchema.parse(data))
-  .handler(async ({ data }): Promise<{ keywords: LocalKeywordSuggestion[] }> => {
-    // Check KV cache
-    const cacheKey = buildCacheKey("local:keywords", {
-      keyword: data.keyword,
-      locationCode: data.locationCode,
-      languageCode: data.languageCode,
-      limit: data.limit,
-    });
-
-    const cachedRaw = await getCached<{ keywords: LocalKeywordSuggestion[] }>(cacheKey);
-    if (cachedRaw && cachedRaw.keywords?.length > 0) {
-      return cachedRaw;
-    }
-
-    const rawItems = await fetchKeywordSuggestionsRaw(
-      data.keyword,
-      data.locationCode,
-      data.languageCode,
-      data.limit,
-    );
-
-    // Local intent markers
-    const localTerms = new Set([
-      "cerca", "cerca de mi", "near me", "en", "barrio", "zona",
-      "mejor", "mejores", "barato", "baratos", "precio", "precios",
-      "urgente", "24h", "24 horas", "abierto", "horario",
-    ]);
-
-    const keywords: LocalKeywordSuggestion[] = rawItems
-      .filter((item) => item.keyword)
-      .map((item) => {
-        const kw = (item.keyword ?? "").toLowerCase();
-        const hasLocalIntent = localTerms.has(kw) ||
-          Array.from(localTerms).some((t) => kw.includes(t));
-
-        return {
-          keyword: item.keyword ?? "",
-          searchVolume: item.keyword_info?.search_volume ?? null,
-          cpc: item.keyword_info?.cpc ?? null,
-          keywordDifficulty: item.keyword_properties?.keyword_difficulty ?? null,
-          intent: item.search_intent_info?.main_intent ?? null,
-          hasLocalPack: hasLocalIntent,
-        };
+  .handler(
+    async ({ data }): Promise<{ keywords: LocalKeywordSuggestion[] }> => {
+      // Check KV cache
+      const cacheKey = buildCacheKey("local:keywords", {
+        keyword: data.keyword,
+        locationCode: data.locationCode,
+        languageCode: data.languageCode,
+        limit: data.limit,
       });
 
-    // Cache the result
-    if (keywords.length > 0) {
-      await setCached(cacheKey, { keywords }, CACHE_TTL.localKeywords, {
-        label: `Keywords locales: ${data.keyword}`,
-        params: { keyword: data.keyword, locationCode: data.locationCode },
-      });
-    }
+      const cachedRaw = await getCached<{ keywords: LocalKeywordSuggestion[] }>(
+        cacheKey,
+      );
+      if (cachedRaw && cachedRaw.keywords?.length > 0) {
+        return cachedRaw;
+      }
 
-    return { keywords };
-  });
+      const rawItems = await fetchKeywordSuggestionsRaw(
+        data.keyword,
+        data.locationCode,
+        data.languageCode,
+        data.limit,
+      );
+
+      // Local intent markers
+      const localTerms = new Set([
+        "cerca",
+        "cerca de mi",
+        "near me",
+        "en",
+        "barrio",
+        "zona",
+        "mejor",
+        "mejores",
+        "barato",
+        "baratos",
+        "precio",
+        "precios",
+        "urgente",
+        "24h",
+        "24 horas",
+        "abierto",
+        "horario",
+      ]);
+
+      const keywords: LocalKeywordSuggestion[] = rawItems
+        .filter((item) => item.keyword)
+        .map((item) => {
+          const kw = (item.keyword ?? "").toLowerCase();
+          const hasLocalIntent =
+            localTerms.has(kw) ||
+            Array.from(localTerms).some((t) => kw.includes(t));
+
+          return {
+            keyword: item.keyword ?? "",
+            searchVolume: item.keyword_info?.search_volume ?? null,
+            cpc: item.keyword_info?.cpc ?? null,
+            keywordDifficulty:
+              item.keyword_properties?.keyword_difficulty ?? null,
+            intent: item.search_intent_info?.main_intent ?? null,
+            hasLocalPack: hasLocalIntent,
+          };
+        });
+
+      // Cache the result
+      if (keywords.length > 0) {
+        await setCached(cacheKey, { keywords }, CACHE_TTL.localKeywords, {
+          label: `Keywords locales: ${data.keyword}`,
+          params: { keyword: data.keyword, locationCode: data.locationCode },
+        });
+      }
+
+      return { keywords };
+    },
+  );
 
 /**
  * Keyword suggestions for the base keyword located IN a specific city.
@@ -183,55 +205,69 @@ export const getLocalKeywordSuggestions = createServerFn({ method: "POST" })
  */
 export const getCityKeywordSuggestions = createServerFn({ method: "POST" })
   .middleware(authenticatedServerFunctionMiddleware)
-  .inputValidator((data: unknown) => localCityKeywordSuggestionsSchema.parse(data))
-  .handler(async ({ data }): Promise<{ keywords: LocalKeywordSuggestion[]; cityFound: string | null }> => {
-    // Check KV cache
-    const cacheKey = buildCacheKey("local:citykw", {
-      keyword: data.keyword,
-      cityName: data.cityName,
-      languageCode: data.languageCode,
-    });
-
-    const cachedRaw = await getCached<{ keywords: LocalKeywordSuggestion[]; cityFound: string | null }>(cacheKey);
-    if (cachedRaw && cachedRaw.keywords?.length > 0) {
-      return cachedRaw;
-    }
-
-    // 1. Look up city location_code in DataForSEO
-    const cityLocation = await lookupCityLocationCode(data.cityName, data.countryIso);
-
-    if (!cityLocation) {
-      return { keywords: [], cityFound: null };
-    }
-
-    // 2. Fetch keywords via Google Ads API at city level
-    const rawItems = await fetchGoogleAdsKeywordsForKeywordsRaw(
-      [data.keyword],
-      cityLocation.locationCode,
-      data.languageCode,
-    );
-
-    const keywords: LocalKeywordSuggestion[] = rawItems
-      .filter((item) => item.keyword)
-      .map((item) => ({
-        keyword: item.keyword ?? "",
-        searchVolume: item.search_volume ?? null,
-        cpc: item.cpc ?? null,
-        keywordDifficulty: item.competition_index ?? null,
-        intent: item.competition?.toLowerCase() ?? null, // LOW, MEDIUM, HIGH
-        hasLocalPack: false,
-      }));
-
-    const result = { keywords, cityFound: cityLocation.locationName };
-
-    // Cache the result
-    if (keywords.length > 0) {
-      await setCached(cacheKey, result, CACHE_TTL.localKeywords, {
-        label: `Keywords ciudad: ${data.keyword} en ${cityLocation.locationName}`,
-        params: { keyword: data.keyword, city: cityLocation.locationName },
+  .inputValidator((data: unknown) =>
+    localCityKeywordSuggestionsSchema.parse(data),
+  )
+  .handler(
+    async ({
+      data,
+    }): Promise<{
+      keywords: LocalKeywordSuggestion[];
+      cityFound: string | null;
+    }> => {
+      // Check KV cache
+      const cacheKey = buildCacheKey("local:citykw", {
+        keyword: data.keyword,
+        cityName: data.cityName,
+        languageCode: data.languageCode,
       });
-    }
 
-    return result;
-  });
+      const cachedRaw = await getCached<{
+        keywords: LocalKeywordSuggestion[];
+        cityFound: string | null;
+      }>(cacheKey);
+      if (cachedRaw && cachedRaw.keywords?.length > 0) {
+        return cachedRaw;
+      }
 
+      // 1. Look up city location_code in DataForSEO
+      const cityLocation = await lookupCityLocationCode(
+        data.cityName,
+        data.countryIso,
+      );
+
+      if (!cityLocation) {
+        return { keywords: [], cityFound: null };
+      }
+
+      // 2. Fetch keywords via Google Ads API at city level
+      const rawItems = await fetchGoogleAdsKeywordsForKeywordsRaw(
+        [data.keyword],
+        cityLocation.locationCode,
+        data.languageCode,
+      );
+
+      const keywords: LocalKeywordSuggestion[] = rawItems
+        .filter((item) => item.keyword)
+        .map((item) => ({
+          keyword: item.keyword ?? "",
+          searchVolume: item.search_volume ?? null,
+          cpc: item.cpc ?? null,
+          keywordDifficulty: item.competition_index ?? null,
+          intent: item.competition?.toLowerCase() ?? null, // LOW, MEDIUM, HIGH
+          hasLocalPack: false,
+        }));
+
+      const result = { keywords, cityFound: cityLocation.locationName };
+
+      // Cache the result
+      if (keywords.length > 0) {
+        await setCached(cacheKey, result, CACHE_TTL.localKeywords, {
+          label: `Keywords ciudad: ${data.keyword} en ${cityLocation.locationName}`,
+          params: { keyword: data.keyword, city: cityLocation.locationName },
+        });
+      }
+
+      return result;
+    },
+  );

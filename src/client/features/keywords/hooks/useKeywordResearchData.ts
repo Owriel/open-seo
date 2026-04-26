@@ -24,7 +24,8 @@ export function useKeywordResearchData(addSearch: AddSearchFn) {
     useState<KeywordSource>("related");
   const [lastUsedFallback, setLastUsedFallback] = useState(false);
   const [lastSearchKeyword, setLastSearchKeyword] = useState("");
-  const [lastSearchLocationCode, setLastSearchLocationCode] = useState(2840);
+  // Default 2724 = España (mercado principal del producto).
+  const [lastSearchLocationCode, setLastSearchLocationCode] = useState(2724);
   const [researchError, setResearchError] = useState<string | null>(null);
   const [searchedKeyword, setSearchedKeyword] = useState("");
 
@@ -93,7 +94,9 @@ export function useKeywordResearchData(addSearch: AddSearchFn) {
         onError: (error) => {
           setLastSearchError(true);
           setRows([]);
-          setResearchError(getStandardErrorMessage(error, "Research failed."));
+          setResearchError(
+            getStandardErrorMessage(error, "Error al investigar keywords."),
+          );
           handlers?.onError?.();
         },
       },

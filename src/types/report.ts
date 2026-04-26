@@ -1,8 +1,14 @@
 // Tipos para el módulo de Informe SEO Integral
 
-import type { CompetitorRow, KeywordIntersectionRow } from "@/types/competitors";
+import type {
+  CompetitorRow,
+  KeywordIntersectionRow,
+} from "@/types/competitors";
 import type { LocalPackResult, LocalKeywordSuggestion } from "@/types/local";
-import type { OpportunityResult, CannibalizationGroup } from "@/types/opportunities";
+import type {
+  OpportunityResult,
+  CannibalizationGroup,
+} from "@/types/opportunities";
 
 // ---------------------------------------------------------------------------
 // Sección de visibilidad (Domain Overview simplificado)
