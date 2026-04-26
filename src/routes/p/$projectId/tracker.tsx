@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useProjectContext } from "@/client/hooks/useProjectContext";
 import {
   TrendingUp,
   TrendingDown,
@@ -21,12 +22,7 @@ import {
   checkRankings,
 } from "@/serverFunctions/tracker";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
-import {
-  LOCATIONS,
-  getLanguageCode,
-  formatNumber,
-  csvEscape,
-} from "@/client/features/keywords/utils";
+import { getLanguageCode, csvEscape } from "@/client/features/keywords/utils";
 
 export const Route = createFileRoute("/p/$projectId/tracker")({
   component: TrackerPage,
@@ -35,12 +31,25 @@ export const Route = createFileRoute("/p/$projectId/tracker")({
 function TrackerPage() {
   const { projectId } = Route.useParams();
   const queryClient = useQueryClient();
+  const { project, locationCode: projectLocationCode } =
+    useProjectContext(projectId);
 
   // Form state for adding keywords
   const [showAddForm, setShowAddForm] = useState(false);
   const [newKeywords, setNewKeywords] = useState("");
   const [trackDomain, setTrackDomain] = useState("");
   const [locationCode, setLocationCode] = useState(2724);
+
+  // Al cargar el proyecto, pre-rellenamos el dominio y el país por defecto
+  // del formulario "Añadir keywords manualmente". El usuario puede cambiarlos.
+  useEffect(() => {
+    if (!project) return;
+    if (trackDomain === "" && project.domain) setTrackDomain(project.domain);
+    if (projectLocationCode != null && locationCode === 2724) {
+      setLocationCode(projectLocationCode);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [project, projectLocationCode]);
 
   // Query tracked keywords
   const keywordsQuery = useQuery({
@@ -52,32 +61,49 @@ function TrackerPage() {
 
   // Mutations
   const addMutation = useMutation({
-    mutationFn: (data: { projectId: string; keywords: string[]; domain: string; locationCode: number; languageCode: string }) =>
-      addTrackedKeywords({ data }),
+    mutationFn: (data: {
+      projectId: string;
+      keywords: string[];
+      domain: string;
+      locationCode: number;
+      languageCode: string;
+    }) => addTrackedKeywords({ data }),
     onSuccess: (result) => {
       toast.success(`${result.added} keywords añadidas al tracker`);
       setShowAddForm(false);
       setNewKeywords("");
-      void queryClient.invalidateQueries({ queryKey: ["trackedKeywords", projectId] });
+      void queryClient.invalidateQueries({
+        queryKey: ["trackedKeywords", projectId],
+      });
     },
-    onError: (err) => toast.error(getStandardErrorMessage(err, "Error al añadir")),
+    onError: (err) =>
+      toast.error(getStandardErrorMessage(err, "Error al añadir")),
   });
 
   const removeMutation = useMutation({
     mutationFn: (data: { trackedKeywordId: string }) =>
       removeTrackedKeyword({ data }),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["trackedKeywords", projectId] });
+      void queryClient.invalidateQueries({
+        queryKey: ["trackedKeywords", projectId],
+      });
     },
   });
 
   const checkMutation = useMutation({
     mutationFn: () => checkRankings({ data: { projectId } }),
     onSuccess: (result) => {
-      toast.success(`${result.checked} posiciones actualizadas${result.errors > 0 ? ` (${result.errors} errores)` : ""}`);
-      void queryClient.invalidateQueries({ queryKey: ["trackedKeywords", projectId] });
+      toast.success(
+        `${result.checked} posiciones actualizadas${result.errors > 0 ? ` (${result.errors} errores)` : ""}`,
+      );
+      void queryClient.invalidateQueries({
+        queryKey: ["trackedKeywords", projectId],
+      });
     },
-    onError: (err) => toast.error(getStandardErrorMessage(err, "Error al comprobar posiciones")),
+    onError: (err) =>
+      toast.error(
+        getStandardErrorMessage(err, "Error al comprobar posiciones"),
+      ),
   });
 
   const handleAdd = (e: React.FormEvent) => {
@@ -105,7 +131,16 @@ function TrackerPage() {
 
   const handleExportCsv = () => {
     if (tracked.length === 0) return;
-    const headers = ["Keyword", "Dominio", "Posición Actual", "Posición Anterior", "Cambio", "Mejor Posición", "URL", "Último Check"];
+    const headers = [
+      "Keyword",
+      "Dominio",
+      "Posición Actual",
+      "Posición Anterior",
+      "Cambio",
+      "Mejor Posición",
+      "URL",
+      "Último Check",
+    ];
     const csvRows = tracked.map((k) =>
       [
         csvEscape(k.keyword),
@@ -131,8 +166,12 @@ function TrackerPage() {
   // Stats
   const ups = tracked.filter((k) => k.change != null && k.change > 0).length;
   const downs = tracked.filter((k) => k.change != null && k.change < 0).length;
-  const top3 = tracked.filter((k) => k.currentPosition != null && k.currentPosition <= 3).length;
-  const top10 = tracked.filter((k) => k.currentPosition != null && k.currentPosition <= 10).length;
+  const top3 = tracked.filter(
+    (k) => k.currentPosition != null && k.currentPosition <= 3,
+  ).length;
+  const top10 = tracked.filter(
+    (k) => k.currentPosition != null && k.currentPosition <= 10,
+  ).length;
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -158,8 +197,12 @@ function TrackerPage() {
               onClick={() => checkMutation.mutate()}
               disabled={checkMutation.isPending || tracked.length === 0}
             >
-              <RefreshCw className={`size-3.5 ${checkMutation.isPending ? "animate-spin" : ""}`} />
-              {checkMutation.isPending ? "Comprobando..." : "Actualizar Posiciones"}
+              <RefreshCw
+                className={`size-3.5 ${checkMutation.isPending ? "animate-spin" : ""}`}
+              />
+              {checkMutation.isPending
+                ? "Comprobando..."
+                : "Actualizar Posiciones"}
             </button>
           </div>
         </div>
@@ -201,11 +244,15 @@ function TrackerPage() {
           {/* Add keyword form */}
           {showAddForm && (
             <div className="mt-4 border border-primary/30 rounded-xl bg-base-100 p-4">
-              <h3 className="font-semibold text-sm mb-3">Añadir Keywords al Tracker</h3>
+              <h3 className="font-semibold text-sm mb-3">
+                Añadir Keywords al Tracker
+              </h3>
               <form onSubmit={handleAdd} className="space-y-3">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <label className="form-control">
-                    <span className="label-text text-xs mb-1">Dominio a monitorizar</span>
+                    <span className="label-text text-xs mb-1">
+                      Dominio a monitorizar
+                    </span>
                     <input
                       className="input input-bordered input-sm"
                       placeholder="tuempresa.es"
@@ -230,7 +277,9 @@ function TrackerPage() {
                   </label>
                 </div>
                 <label className="form-control">
-                  <span className="label-text text-xs mb-1">Keywords (una por línea o separadas por coma)</span>
+                  <span className="label-text text-xs mb-1">
+                    Keywords (una por línea o separadas por coma)
+                  </span>
                   <textarea
                     className="textarea textarea-bordered textarea-sm h-24"
                     placeholder="reformas terrassa&#10;fontanero terrassa&#10;empresa reformas barcelona"
@@ -239,10 +288,18 @@ function TrackerPage() {
                   />
                 </label>
                 <div className="flex gap-2 justify-end">
-                  <button type="button" className="btn btn-sm btn-ghost" onClick={() => setShowAddForm(false)}>
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-ghost"
+                    onClick={() => setShowAddForm(false)}
+                  >
                     Cancelar
                   </button>
-                  <button type="submit" className="btn btn-sm btn-primary" disabled={addMutation.isPending}>
+                  <button
+                    type="submit"
+                    className="btn btn-sm btn-primary"
+                    disabled={addMutation.isPending}
+                  >
                     {addMutation.isPending ? "Añadiendo..." : "Añadir"}
                   </button>
                 </div>
@@ -264,8 +321,8 @@ function TrackerPage() {
                 No hay keywords en seguimiento
               </p>
               <p className="text-sm text-base-content/50 max-w-md mx-auto">
-                Añade keywords para monitorizar su posición en Google. Puedes importarlas
-                desde Keywords Guardadas o añadirlas manualmente.
+                Añade keywords para monitorizar su posición en Google. Puedes
+                importarlas desde Keywords Guardadas o añadirlas manualmente.
               </p>
               <button
                 className="btn btn-primary btn-sm"
@@ -307,18 +364,28 @@ function TrackerPage() {
                     {tracked.map((kw) => (
                       <tr key={kw.id} className="hover:bg-base-200/50">
                         <td className="font-medium capitalize">{kw.keyword}</td>
-                        <td className="text-base-content/60 text-xs">{kw.domain}</td>
+                        <td className="text-base-content/60 text-xs">
+                          {kw.domain}
+                        </td>
                         <td className="text-center">
                           {kw.currentPosition ? (
-                            <span className={`badge badge-sm ${
-                              kw.currentPosition <= 3 ? "badge-success" :
-                              kw.currentPosition <= 10 ? "badge-warning" :
-                              kw.currentPosition <= 20 ? "badge-info" : "badge-ghost"
-                            }`}>
+                            <span
+                              className={`badge badge-sm ${
+                                kw.currentPosition <= 3
+                                  ? "badge-success"
+                                  : kw.currentPosition <= 10
+                                    ? "badge-warning"
+                                    : kw.currentPosition <= 20
+                                      ? "badge-info"
+                                      : "badge-ghost"
+                              }`}
+                            >
                               #{kw.currentPosition}
                             </span>
                           ) : (
-                            <span className="text-base-content/30 text-xs">Sin datos</span>
+                            <span className="text-base-content/30 text-xs">
+                              Sin datos
+                            </span>
                           )}
                         </td>
                         <td className="text-center">
@@ -326,42 +393,59 @@ function TrackerPage() {
                             kw.change > 0 ? (
                               <span className="inline-flex items-center gap-0.5 text-success text-xs font-medium">
                                 <TrendingUp className="size-3" />+{kw.change}
-                                {kw.change >= 5 && <span className="ml-0.5">🚀</span>}
+                                {kw.change >= 5 && (
+                                  <span className="ml-0.5">🚀</span>
+                                )}
                               </span>
                             ) : kw.change < 0 ? (
                               <span className="inline-flex items-center gap-0.5 text-error text-xs font-medium">
-                                <TrendingDown className="size-3" />{kw.change}
-                                {kw.change <= -5 && <AlertTriangle className="size-3 ml-0.5" />}
+                                <TrendingDown className="size-3" />
+                                {kw.change}
+                                {kw.change <= -5 && (
+                                  <AlertTriangle className="size-3 ml-0.5" />
+                                )}
                               </span>
                             ) : (
                               <Minus className="size-3 mx-auto text-base-content/30" />
                             )
                           ) : (
-                            <span className="text-base-content/30 text-xs">—</span>
+                            <span className="text-base-content/30 text-xs">
+                              —
+                            </span>
                           )}
                         </td>
                         <td className="text-center">
                           {kw.bestPosition ? (
                             <span className="text-xs tabular-nums">
                               #{kw.bestPosition}
-                              {kw.bestPosition <= 3 && <Trophy className="size-3 inline ml-0.5 text-warning" />}
+                              {kw.bestPosition <= 3 && (
+                                <Trophy className="size-3 inline ml-0.5 text-warning" />
+                              )}
                             </span>
                           ) : (
                             <span className="text-base-content/30">—</span>
                           )}
                         </td>
-                        <td className="text-right max-w-[200px] truncate text-xs text-base-content/50" title={kw.rankingUrl ?? ""}>
+                        <td
+                          className="text-right max-w-[200px] truncate text-xs text-base-content/50"
+                          title={kw.rankingUrl ?? ""}
+                        >
                           {kw.rankingUrl ?? "—"}
                         </td>
                         <td className="text-right text-xs text-base-content/40">
                           {kw.lastChecked
-                            ? new Date(kw.lastChecked).toLocaleDateString(undefined, { month: "short", day: "numeric" })
+                            ? new Date(kw.lastChecked).toLocaleDateString(
+                                undefined,
+                                { month: "short", day: "numeric" },
+                              )
                             : "Nunca"}
                         </td>
                         <td>
                           <button
                             className="btn btn-ghost btn-xs text-error"
-                            onClick={() => removeMutation.mutate({ trackedKeywordId: kw.id })}
+                            onClick={() =>
+                              removeMutation.mutate({ trackedKeywordId: kw.id })
+                            }
                           >
                             <Trash2 className="size-3" />
                           </button>

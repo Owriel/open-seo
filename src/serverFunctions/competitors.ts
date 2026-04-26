@@ -15,7 +15,11 @@ import {
   setCached,
   CACHE_TTL,
 } from "@/server/lib/kv-cache";
-import type { CompetitorRow, KeywordIntersectionRow } from "@/types/competitors";
+
+import type {
+  CompetitorRow,
+  KeywordIntersectionRow,
+} from "@/types/competitors";
 
 export const findCompetitors = createServerFn({ method: "POST" })
   .middleware(authenticatedServerFunctionMiddleware)
@@ -30,13 +34,13 @@ export const findCompetitors = createServerFn({ method: "POST" })
       languageCode: data.languageCode,
     });
 
-    const cachedRaw = await getCached(cacheKey) as { competitors: CompetitorRow[] } | null;
+    const cachedRaw = await getCached<{ competitors: CompetitorRow[] }>(
+      cacheKey,
+    );
     if (cachedRaw && cachedRaw.competitors?.length > 0) {
-      console.log("[COMPETITORS] Serving from cache:", cachedRaw.competitors.length, "competitors");
       return cachedRaw;
     }
 
-    console.log("[COMPETITORS] Cache miss, calling DataForSEO...");
     const rawItems = await fetchCompetitorsDomainRaw(
       target,
       data.locationCode,
@@ -49,7 +53,13 @@ export const findCompetitors = createServerFn({ method: "POST" })
       .map((item) => {
         // Extract organic metrics from full_domain_metrics (the key varies by location)
         const metricsObj = item.full_domain_metrics ?? {};
-        const firstEntry = Object.values(metricsObj)[0] as { organic?: { etv?: number | null; count?: number | null } } | undefined;
+        type MetricsEntry = {
+          organic?: { etv?: number | null; count?: number | null };
+        };
+        // eslint-disable-next-line typescript/no-unsafe-type-assertion
+        const firstEntry = Object.values(metricsObj)[0] as
+          | MetricsEntry
+          | undefined;
         const organicMetrics = firstEntry?.organic;
 
         return {
@@ -76,66 +86,77 @@ export const findCompetitors = createServerFn({ method: "POST" })
 export const getKeywordIntersection = createServerFn({ method: "POST" })
   .middleware(authenticatedServerFunctionMiddleware)
   .inputValidator((data: unknown) => keywordIntersectionSchema.parse(data))
-  .handler(async ({ data }): Promise<{ keywords: KeywordIntersectionRow[]; totalCount: number }> => {
-    // Check KV cache
-    const cacheKey = buildCacheKey("comp:intersection", {
-      domain1: data.domain1,
-      domain2: data.domain2,
-      locationCode: data.locationCode,
-      languageCode: data.languageCode,
-      mode: data.mode,
-      limit: data.limit,
-    });
-
-    const cachedRaw = await getCached(cacheKey) as { keywords: KeywordIntersectionRow[]; totalCount: number } | null;
-    if (cachedRaw && cachedRaw.keywords?.length > 0) {
-      console.log("[INTERSECTION] Serving from cache:", cachedRaw.keywords.length, "keywords");
-      return cachedRaw;
-    }
-
-    console.log("[INTERSECTION] Cache miss, calling DataForSEO...");
-    const intersectionType =
-      data.mode === "gaps"
-        ? ("target2_not_target1" as const)
-        : data.mode === "advantages"
-          ? ("target1_not_target2" as const)
-          : ("common" as const);
-
-    // For "common" mode, don't exclude intersections
-    const excludeIntersections = intersectionType !== "common";
-
-    const rawItems = await fetchDomainIntersectionRaw(
-      data.domain1,
-      data.domain2,
-      data.locationCode,
-      data.languageCode,
-      data.limit,
-      excludeIntersections ? intersectionType : "all",
-    );
-
-    const keywords: KeywordIntersectionRow[] = rawItems
-      .filter((item) => item.keyword)
-      .map((item) => ({
-        keyword: item.keyword ?? "",
-        searchVolume: item.keyword_data?.keyword_info?.search_volume ?? null,
-        cpc: item.keyword_data?.keyword_info?.cpc ?? null,
-        keywordDifficulty: item.keyword_data?.keyword_properties?.keyword_difficulty ?? null,
-        intent: item.keyword_data?.search_intent_info?.main_intent ?? null,
-        myRank: item.first_domain_serp_element?.rank_absolute ?? null,
-        myEtv: item.first_domain_serp_element?.etv ?? null,
-        competitorRank: item.second_domain_serp_element?.rank_absolute ?? null,
-        competitorEtv: item.second_domain_serp_element?.etv ?? null,
-      }));
-
-    const result = { keywords, totalCount: keywords.length };
-
-    // Cache the result
-    if (keywords.length > 0) {
-      await setCached(cacheKey, result, CACHE_TTL.keywordIntersection, {
-        label: `Intersección: ${data.domain1} vs ${data.domain2}`,
-        params: { domain1: data.domain1, domain2: data.domain2, mode: data.mode },
+  .handler(
+    async ({
+      data,
+    }): Promise<{ keywords: KeywordIntersectionRow[]; totalCount: number }> => {
+      // Check KV cache
+      const cacheKey = buildCacheKey("comp:intersection", {
+        domain1: data.domain1,
+        domain2: data.domain2,
+        locationCode: data.locationCode,
+        languageCode: data.languageCode,
+        mode: data.mode,
+        limit: data.limit,
       });
-    }
 
-    return result;
-  });
+      const cachedRaw = await getCached<{
+        keywords: KeywordIntersectionRow[];
+        totalCount: number;
+      }>(cacheKey);
+      if (cachedRaw && cachedRaw.keywords?.length > 0) {
+        return cachedRaw;
+      }
+
+      const intersectionType =
+        data.mode === "gaps"
+          ? ("target2_not_target1" as const)
+          : data.mode === "advantages"
+            ? ("target1_not_target2" as const)
+            : ("common" as const);
+
+      // For "common" mode, don't exclude intersections
+      const excludeIntersections = intersectionType !== "common";
+
+      const rawItems = await fetchDomainIntersectionRaw(
+        data.domain1,
+        data.domain2,
+        data.locationCode,
+        data.languageCode,
+        data.limit,
+        excludeIntersections ? intersectionType : "all",
+      );
+
+      const keywords: KeywordIntersectionRow[] = rawItems
+        .filter((item) => item.keyword)
+        .map((item) => ({
+          keyword: item.keyword ?? "",
+          searchVolume: item.keyword_data?.keyword_info?.search_volume ?? null,
+          cpc: item.keyword_data?.keyword_info?.cpc ?? null,
+          keywordDifficulty:
+            item.keyword_data?.keyword_properties?.keyword_difficulty ?? null,
+          intent: item.keyword_data?.search_intent_info?.main_intent ?? null,
+          myRank: item.first_domain_serp_element?.rank_absolute ?? null,
+          myEtv: item.first_domain_serp_element?.etv ?? null,
+          competitorRank:
+            item.second_domain_serp_element?.rank_absolute ?? null,
+          competitorEtv: item.second_domain_serp_element?.etv ?? null,
+        }));
+
+      const result = { keywords, totalCount: keywords.length };
+
+      // Cache the result
+      if (keywords.length > 0) {
+        await setCached(cacheKey, result, CACHE_TTL.keywordIntersection, {
+          label: `Intersección: ${data.domain1} vs ${data.domain2}`,
+          params: {
+            domain1: data.domain1,
+            domain2: data.domain2,
+            mode: data.mode,
+          },
+        });
+      }
+
+      return result;
+    },
+  );

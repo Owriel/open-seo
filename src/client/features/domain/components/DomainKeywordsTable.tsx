@@ -33,8 +33,8 @@ export function DomainKeywordsTable({
     <div className="overflow-x-auto">
       <div className="mb-2 text-xs text-base-content/60">
         {selectedKeywords.size > 0
-          ? `${selectedKeywords.size} selected`
-          : "Select keywords to save"}
+          ? `${selectedKeywords.size} seleccionadas`
+          : "Selecciona keywords para guardar"}
       </div>
       <table className="table table-zebra table-sm">
         <thead>
@@ -55,7 +55,7 @@ export function DomainKeywordsTable({
             <th>Keyword</th>
             <th>
               <SortableHeader
-                label="Rank"
+                label="Posición"
                 isActive={sortMode === "rank"}
                 order={currentSortOrder}
                 onClick={() => onSortClick("rank")}
@@ -63,7 +63,7 @@ export function DomainKeywordsTable({
             </th>
             <th>
               <SortableHeader
-                label="Volume"
+                label="Volumen"
                 isActive={sortMode === "volume"}
                 order={currentSortOrder}
                 onClick={() => onSortClick("volume")}
@@ -71,20 +71,23 @@ export function DomainKeywordsTable({
             </th>
             <th>
               <SortableHeader
-                label="Traffic"
+                label="Tráfico"
                 isActive={sortMode === "traffic"}
                 order={currentSortOrder}
                 onClick={() => onSortClick("traffic")}
               />
             </th>
             <th>
-              <HeaderHelpLabel label="CPC" helpText="Cost per click in USD." />
+              <HeaderHelpLabel
+                label="CPC (USD)"
+                helpText="Coste por clic en USD. DataForSEO devuelve los valores en USD."
+              />
             </th>
             <th>URL</th>
             <th>
               <HeaderHelpLabel
                 label="Score"
-                helpText="Keyword difficulty score."
+                helpText="Puntuación de dificultad de la keyword."
               />
             </th>
           </tr>
@@ -93,7 +96,7 @@ export function DomainKeywordsTable({
           {rows.length === 0 ? (
             <tr>
               <td colSpan={8} className="py-6 text-center text-base-content/60">
-                No keywords match this search.
+                Ninguna keyword coincide con esta búsqueda.
               </td>
             </tr>
           ) : (
@@ -105,7 +108,7 @@ export function DomainKeywordsTable({
                     className="checkbox checkbox-xs"
                     checked={selectedKeywords.has(row.keyword)}
                     onChange={() => onToggleKeyword(row.keyword)}
-                    aria-label={`Select ${row.keyword}`}
+                    aria-label={`Seleccionar ${row.keyword}`}
                   />
                 </td>
                 <td className="font-medium">{row.keyword}</td>

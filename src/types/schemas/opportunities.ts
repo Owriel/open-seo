@@ -17,14 +17,16 @@ export const analyzeWithDataforseoSchema = z.object({
 // --- Análisis con CSV (datos ya parseados en cliente) ---
 export const analyzeWithCsvSchema = z.object({
   domain: z.string().min(1).trim(),
-  rows: z.array(z.object({
-    keyword: z.string().min(1),
-    url: z.string().nullable().default(null),
-    clicks: z.number().nullable().default(null),
-    impressions: z.number().nullable().default(null),
-    ctr: z.number().nullable().default(null),
-    position: z.number().nullable().default(null),
-  })),
+  rows: z.array(
+    z.object({
+      keyword: z.string().min(1),
+      url: z.string().nullable().default(null),
+      clicks: z.number().nullable().default(null),
+      impressions: z.number().nullable().default(null),
+      ctr: z.number().nullable().default(null),
+      position: z.number().nullable().default(null),
+    }),
+  ),
   filters: z.object({
     minPosition: z.number().min(1).default(4),
     maxPosition: z.number().max(100).default(20),
@@ -71,32 +73,40 @@ export const saveAnalysisSchema = z.object({
   projectId: z.string().min(1),
   domain: z.string().min(1),
   source: z.enum(["dataforseo", "csv", "gsc"]),
-  results: z.array(z.object({
-    keyword: z.string(),
-    url: z.string().nullable(),
-    position: z.number().nullable(),
-    clicks: z.number().nullable(),
-    impressions: z.number().nullable(),
-    ctr: z.number().nullable(),
-    expectedCtr: z.number().nullable(),
-    ctrGap: z.number().nullable(),
-    searchVolume: z.number().nullable(),
-    keywordDifficulty: z.number().nullable(),
-    cpc: z.number().nullable(),
-    traffic: z.number().nullable(),
-    score: z.number(),
-    opportunityType: z.array(z.enum(["near_top3", "second_page", "low_ctr", "cannibalized"])),
-  })),
-  cannibalization: z.array(z.object({
-    keyword: z.string(),
-    urls: z.array(z.object({
-      url: z.string(),
+  results: z.array(
+    z.object({
+      keyword: z.string(),
+      url: z.string().nullable(),
       position: z.number().nullable(),
       clicks: z.number().nullable(),
       impressions: z.number().nullable(),
       ctr: z.number().nullable(),
-    })),
-  })),
+      expectedCtr: z.number().nullable(),
+      ctrGap: z.number().nullable(),
+      searchVolume: z.number().nullable(),
+      keywordDifficulty: z.number().nullable(),
+      cpc: z.number().nullable(),
+      traffic: z.number().nullable(),
+      score: z.number(),
+      opportunityType: z.array(
+        z.enum(["near_top3", "second_page", "low_ctr", "cannibalized"]),
+      ),
+    }),
+  ),
+  cannibalization: z.array(
+    z.object({
+      keyword: z.string(),
+      urls: z.array(
+        z.object({
+          url: z.string(),
+          position: z.number().nullable(),
+          clicks: z.number().nullable(),
+          impressions: z.number().nullable(),
+          ctr: z.number().nullable(),
+        }),
+      ),
+    }),
+  ),
   totalKeywords: z.number(),
   totalOpportunities: z.number(),
   filters: z.object({

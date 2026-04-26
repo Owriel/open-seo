@@ -1,6 +1,9 @@
 import { createServerFn } from "@tanstack/react-start";
 import { authenticatedServerFunctionMiddleware } from "@/serverFunctions/middleware";
-import { cacheActionSchema, cacheBulkActionSchema } from "@/types/schemas/cache";
+import {
+  cacheActionSchema,
+  cacheBulkActionSchema,
+} from "@/types/schemas/cache";
 import {
   listCacheEntries,
   extendCached,

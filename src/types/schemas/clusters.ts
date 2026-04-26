@@ -10,22 +10,26 @@ export const saveClusterPlanSchema = z.object({
   projectId: z.string().min(1),
   name: z.string().min(1).trim(),
   pillarKeyword: z.string().min(1),
-  clusters: z.array(z.object({
-    name: z.string(),
-    keywords: z.array(z.object({
-      keyword: z.string(),
-      searchVolume: z.number().nullable(),
-      keywordDifficulty: z.number().nullable(),
-      cpc: z.number().nullable(),
-      intent: z.string().nullable(),
-      priority: z.number().nullable(),
-    })),
-    totalVolume: z.number(),
-    avgDifficulty: z.number(),
-    avgCpc: z.number(),
-    avgPriority: z.number(),
-    count: z.number(),
-  })),
+  clusters: z.array(
+    z.object({
+      name: z.string(),
+      keywords: z.array(
+        z.object({
+          keyword: z.string(),
+          searchVolume: z.number().nullable(),
+          keywordDifficulty: z.number().nullable(),
+          cpc: z.number().nullable(),
+          intent: z.string().nullable(),
+          priority: z.number().nullable(),
+        }),
+      ),
+      totalVolume: z.number(),
+      avgDifficulty: z.number(),
+      avgCpc: z.number(),
+      avgPriority: z.number(),
+      count: z.number(),
+    }),
+  ),
 });
 
 export const deleteClusterPlanSchema = z.object({

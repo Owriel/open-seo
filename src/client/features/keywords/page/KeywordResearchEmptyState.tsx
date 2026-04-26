@@ -1,6 +1,8 @@
-import { Clock, Globe, History, Search, X } from "lucide-react";
+import { Clock, Globe, History, Search, X, Sparkles } from "lucide-react";
+import { Link, useParams } from "@tanstack/react-router";
 import { reverse } from "remeda";
 import { LOCATIONS } from "@/client/features/keywords/utils";
+import { useProjectContext } from "@/client/hooks/useProjectContext";
 import type { KeywordResearchControllerState } from "./types";
 
 type Props = {
@@ -33,16 +35,16 @@ function NoResultsState({ controller }: Props) {
         <Globe className="size-10 mx-auto text-base-content/40" />
         <div className="space-y-2">
           <p className="text-lg font-semibold text-base-content">
-            Not enough keyword data for this query yet
+            Todavía no hay suficientes datos de keywords para esta búsqueda
           </p>
           <p className="text-sm text-base-content/70">
-            We could not find keyword opportunities for
+            No hemos encontrado oportunidades de keywords para
             <span className="font-medium text-base-content">
               {` "${lastSearchKeyword}" `}
             </span>
-            in
+            en
             <span className="font-medium text-base-content">
-              {` ${LOCATIONS[lastSearchLocationCode] || "this location"}`}
+              {` ${LOCATIONS[lastSearchLocationCode] || "esta ubicación"}`}
             </span>
             .
           </p>
@@ -50,13 +52,19 @@ function NoResultsState({ controller }: Props) {
 
         <div className="rounded-xl bg-base-200/70 px-4 py-3 text-left text-sm text-base-content/70 space-y-1">
           <p>
-            Source checked:{" "}
+            Fuente consultada:{" "}
             <span className="font-medium">{lastResultSource}</span>
             {lastUsedFallback ? (
-              <span> (with fallback chain: related - suggestions - ideas)</span>
+              <span>
+                {" "}
+                (con cadena de fallback: related - suggestions - ideas)
+              </span>
             ) : null}
           </p>
-          <p>Try a broader phrase, swap word order, or change location.</p>
+          <p>
+            Prueba una frase más amplia, cambia el orden de las palabras o la
+            ubicación.
+          </p>
         </div>
 
         <div className="flex flex-wrap items-center justify-center gap-2">
@@ -76,7 +84,7 @@ function NoResultsState({ controller }: Props) {
             }}
             disabled={lastSearchKeyword.trim().split(/\s+/).length < 2}
           >
-            Try reversed phrase
+            Probar frase invertida
           </button>
           <button
             className="btn btn-sm btn-ghost"
@@ -92,7 +100,7 @@ function NoResultsState({ controller }: Props) {
               });
             }}
           >
-            Try broader seed
+            Probar término más amplio
           </button>
         </div>
       </div>
@@ -109,6 +117,12 @@ function SearchHistoryState({ controller }: Props) {
     onSearch,
     removeHistoryItem,
   } = controller;
+  // Contexto del proyecto para CTA específico (sustituye al empty genérico
+  // cuando no hay historial de búsquedas previas).
+  const { projectId } = useParams({ from: "/p/$projectId/keywords" });
+  const { project } = useProjectContext(projectId);
+  const projectKeyword = project?.targetKeyword?.trim() ?? "";
+  const hasNoHistory = historyLoaded && history.length === 0;
 
   return (
     <div className="flex-1 overflow-y-auto px-4 md:px-6 pb-6">
@@ -119,15 +133,16 @@ function SearchHistoryState({ controller }: Props) {
               <div className="flex items-center gap-2">
                 <History className="size-4 text-base-content/45" />
                 <span className="text-sm text-base-content/60">
-                  {history.length} recent search
-                  {history.length !== 1 ? "es" : ""}
+                  {history.length === 1
+                    ? "1 búsqueda reciente"
+                    : `${history.length} búsquedas recientes`}
                 </span>
               </div>
               <button
                 className="btn btn-ghost btn-xs text-error"
                 onClick={clearHistory}
               >
-                Clear all
+                Limpiar todo
               </button>
             </div>
             <div className="grid gap-2">
@@ -179,15 +194,66 @@ function SearchHistoryState({ controller }: Props) {
               ))}
             </div>
           </section>
+        ) : hasNoHistory && projectKeyword ? (
+          // CTA específico: el proyecto tiene targetKeyword configurada.
+          // Al pulsar, autocompleta el form y lanza la búsqueda.
+          <section className="rounded-2xl border border-primary/30 bg-primary/5 p-6 text-center space-y-3">
+            <Sparkles className="size-10 mx-auto text-primary" />
+            <p className="text-lg font-semibold text-base-content">
+              Investiga tu primera keyword
+            </p>
+            <p className="text-sm text-base-content/70 max-w-md mx-auto">
+              Tu proyecto tiene configurada{" "}
+              <span className="font-medium text-base-content">
+                &ldquo;{projectKeyword}&rdquo;
+              </span>
+              . Dale un clic y te mostraremos volumen, dificultad, CPC y
+              keywords relacionadas.
+            </p>
+            <button
+              className="btn btn-sm btn-primary gap-1"
+              onClick={() => {
+                controlsForm.setFieldValue("keyword", projectKeyword);
+                onSearch({ keyword: projectKeyword });
+              }}
+            >
+              <Search className="size-3.5" />
+              Buscar &ldquo;{projectKeyword}&rdquo;
+            </button>
+          </section>
+        ) : hasNoHistory ? (
+          // Sin historial y sin keyword configurada en el proyecto: invitamos
+          // al usuario a configurarla en Settings.
+          <section className="rounded-2xl border border-dashed border-base-300 bg-base-100/70 p-6 text-center text-base-content/60 space-y-3">
+            <Search className="size-10 mx-auto opacity-40" />
+            <p className="text-lg font-medium text-base-content/80">
+              Introduce una keyword para empezar
+            </p>
+            <p className="text-sm max-w-md mx-auto">
+              Busca cualquier keyword para ver volumen, dificultad, CPC e ideas
+              de keywords relacionadas.
+            </p>
+            <div className="text-xs text-base-content/50 mt-2">
+              Sugerencia: configura una keyword objetivo en{" "}
+              <Link
+                to="/p/$projectId/settings"
+                params={{ projectId }}
+                className="link link-primary"
+              >
+                ajustes del proyecto
+              </Link>{" "}
+              para auto-rellenar todos los módulos.
+            </div>
+          </section>
         ) : (
           <section className="rounded-2xl border border-dashed border-base-300 bg-base-100/70 p-6 text-center text-base-content/50 space-y-3">
             <Search className="size-10 mx-auto opacity-40" />
             <p className="text-lg font-medium text-base-content/80">
-              Enter a keyword to get started
+              Introduce una keyword para empezar
             </p>
             <p className="text-sm max-w-md mx-auto">
-              Search for any keyword to see volume, difficulty, CPC, and related
-              keyword ideas.
+              Busca cualquier keyword para ver volumen, dificultad, CPC e ideas
+              de keywords relacionadas.
             </p>
           </section>
         )}

@@ -18,6 +18,7 @@ import {
   useSettingsForm,
   type LaunchState,
 } from "@/client/features/audit/launch/types";
+import { useProjectContext } from "@/client/hooks/useProjectContext";
 
 export function useLaunchController({
   projectId,
@@ -26,7 +27,22 @@ export function useLaunchController({
   projectId: string;
   onAuditStarted: (auditId: string) => void;
 }) {
-  const launchForm = useLaunchForm();
+  // Contexto del proyecto: si el proyecto tiene dominio, lo usamos como
+  // URL por defecto. Preferimos URL completa pero aquí aceptamos el
+  // dominio tal cual — el backend normaliza en startAudit.
+  const { project } = useProjectContext(projectId);
+  const defaultUrl = buildDefaultAuditUrl(project?.domain);
+  const launchForm = useLaunchForm(defaultUrl);
+
+  // Como el proyecto puede llegar asíncrono, rellenamos el campo URL una
+  // vez cargado (y sólo si el usuario aún no ha escrito nada).
+  useEffect(() => {
+    if (!defaultUrl) return;
+    if (launchForm.state.values.url) return;
+    launchForm.setFieldValue("url", defaultUrl);
+    // launchForm es estable entre renders; deps centrados en defaultUrl.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [defaultUrl]);
   const settingsForm = useSettingsForm();
   const [state, setState] = useState<LaunchState>({
     isSettingsOpen: false,
@@ -249,4 +265,15 @@ function handleSaveSettings(
     isSettingsOpen: false,
   }));
   save(trimmed);
+}
+
+// Construye la URL por defecto para el launch form a partir del dominio
+// del proyecto. Si ya viene con protocolo, la respetamos; si no, añadimos
+// https://. Null/undefined → cadena vacía.
+function buildDefaultAuditUrl(domain: string | null | undefined): string {
+  if (!domain) return "";
+  const trimmed = domain.trim();
+  if (!trimmed) return "";
+  if (/^[a-z][a-z0-9+.-]*:\/\//i.test(trimmed)) return trimmed;
+  return `https://${trimmed}`;
 }

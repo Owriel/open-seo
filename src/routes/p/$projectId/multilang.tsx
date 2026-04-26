@@ -11,8 +11,6 @@ import {
   ChevronDown,
   ChevronUp,
   AlertCircle,
-  CheckCircle2,
-  Clock,
   Loader2,
   X,
   Tag,
@@ -58,7 +56,9 @@ function computeKeywordStatus(ficha: MultilangFicha, cat: MultilangCategory) {
   const missing: string[] = [];
   for (const kw of cat.keywords) {
     const kwL = kw.toLowerCase();
-    const matched = (ficha.variants || []).filter((v) => v.name.toLowerCase().includes(kwL));
+    const matched = (ficha.variants || []).filter((v) =>
+      v.name.toLowerCase().includes(kwL),
+    );
     if (matched.length > 0) found.push({ keyword: kw, variants: matched });
     else missing.push(kw);
   }
@@ -79,11 +79,17 @@ function MultilangPage() {
 
   // Estado de análisis
   const [analyzing, setAnalyzing] = useState(false);
-  const [analyzeProgress, setAnalyzeProgress] = useState({ current: 0, total: 0, name: "" });
+  const [analyzeProgress, setAnalyzeProgress] = useState({
+    current: 0,
+    total: 0,
+    name: "",
+  });
 
   // Filtros
   const [searchText, setSearchText] = useState("");
-  const [filterStatus, setFilterStatus] = useState<"all" | "multi" | "nomulti" | "pending" | "error">("all");
+  const [filterStatus, setFilterStatus] = useState<
+    "all" | "multi" | "nomulti" | "pending" | "error"
+  >("all");
   const [filterCatId, setFilterCatId] = useState("");
 
   // Categorías UI
@@ -97,7 +103,9 @@ function MultilangPage() {
 
   // Cards expandidas
   const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
-  const [expandedLangTables, setExpandedLangTables] = useState<Set<string>>(new Set());
+  const [expandedLangTables, setExpandedLangTables] = useState<Set<string>>(
+    new Set(),
+  );
 
   // Bulk select
   const [selectedFichas, setSelectedFichas] = useState<Set<string>>(new Set());
@@ -107,7 +115,7 @@ function MultilangPage() {
   const [placesResults, setPlacesResults] = useState<PlaceSearchResult[]>([]);
   const [placesSearching, setPlacesSearching] = useState(false);
   const [showBulkImport, setShowBulkImport] = useState(false);
-  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const _searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ── Carga inicial ──
   const loadData = useCallback(async () => {
@@ -116,12 +124,15 @@ function MultilangPage() {
       setDb(data);
       setLoaded(true);
     } catch (err) {
-      toast.error("Error al cargar datos: " + (err instanceof Error ? err.message : "Error desconocido"));
+      toast.error(
+        "Error al cargar datos: " +
+          (err instanceof Error ? err.message : "Error desconocido"),
+      );
     }
   }, [projectId]);
 
   useEffect(() => {
-    loadData();
+    void loadData();
   }, [loadData]);
 
   // ── Buscador de Google Places ──
@@ -134,7 +145,9 @@ function MultilangPage() {
       const results = await searchPlacesAction({ data: { query: q.trim() } });
       setPlacesResults(results);
     } catch (err) {
-      toast.error("Error en búsqueda: " + (err instanceof Error ? err.message : "Error"));
+      toast.error(
+        "Error en búsqueda: " + (err instanceof Error ? err.message : "Error"),
+      );
     }
     setPlacesSearching(false);
   };
@@ -142,7 +155,7 @@ function MultilangPage() {
   const handlePlacesKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") {
       e.preventDefault();
-      handlePlacesSearch();
+      void handlePlacesSearch();
     }
   };
 
@@ -154,7 +167,9 @@ function MultilangPage() {
       if (result.added > 0) {
         toast.success(`"${place.name}" añadida`);
         // Quitar de resultados
-        setPlacesResults((prev) => prev.filter((p) => p.placeId !== place.placeId));
+        setPlacesResults((prev) =>
+          prev.filter((p) => p.placeId !== place.placeId),
+        );
         await loadData();
       } else {
         toast.info("Esa ficha ya existe");
@@ -167,17 +182,24 @@ function MultilangPage() {
   // ── Acciones ──
 
   const handleAddBulk = async () => {
-    const lines = bulkInput.split("\n").map((l) => l.trim()).filter((l) => l);
+    const lines = bulkInput
+      .split("\n")
+      .map((l) => l.trim())
+      .filter((l) => l);
     if (lines.length === 0) return;
     try {
       const result = await addFichas({
         data: { projectId, entries: lines.map((l) => ({ input: l })) },
       });
       setBulkInput("");
-      toast.success(`Se agregaron ${result.added} fichas nuevas (${result.total} total)`);
+      toast.success(
+        `Se agregaron ${result.added} fichas nuevas (${result.total} total)`,
+      );
       await loadData();
     } catch (err) {
-      toast.error("Error: " + (err instanceof Error ? err.message : "Error desconocido"));
+      toast.error(
+        "Error: " + (err instanceof Error ? err.message : "Error desconocido"),
+      );
     }
   };
 
@@ -251,8 +273,15 @@ function MultilangPage() {
   const handleDeleteOne = async (fichaId: string) => {
     if (!confirm("¿Eliminar esta ficha?")) return;
     await deleteFicha({ data: { projectId, fichaId } });
-    setDb((prev) => ({ ...prev, fichas: prev.fichas.filter((f) => f.id !== fichaId) }));
-    setSelectedFichas((prev) => { const n = new Set(prev); n.delete(fichaId); return n; });
+    setDb((prev) => ({
+      ...prev,
+      fichas: prev.fichas.filter((f) => f.id !== fichaId),
+    }));
+    setSelectedFichas((prev) => {
+      const n = new Set(prev);
+      n.delete(fichaId);
+      return n;
+    });
     toast.success("Ficha eliminada");
   };
 
@@ -274,9 +303,12 @@ function MultilangPage() {
   };
 
   const handleBulkDelete = async () => {
-    if (!confirm(`¿Eliminar ${selectedFichas.size} fichas seleccionadas?`)) return;
+    if (!confirm(`¿Eliminar ${selectedFichas.size} fichas seleccionadas?`))
+      return;
     try {
-      await deleteFichasBulk({ data: { projectId, fichaIds: Array.from(selectedFichas) } });
+      await deleteFichasBulk({
+        data: { projectId, fichaIds: Array.from(selectedFichas) },
+      });
       setDb((prev) => ({
         ...prev,
         fichas: prev.fichas.filter((f) => !selectedFichas.has(f.id)),
@@ -313,7 +345,16 @@ function MultilangPage() {
       toast.info("No hay fichas analizadas para exportar");
       return;
     }
-    const headers = ["Ficha", "Nombre Base", "Categoría", "Idiomas", "Multiidiomas", "Keywords OK", "Keywords Faltan", "Detalle"];
+    const headers = [
+      "Ficha",
+      "Nombre Base",
+      "Categoría",
+      "Idiomas",
+      "Multiidiomas",
+      "Keywords OK",
+      "Keywords Faltan",
+      "Detalle",
+    ];
     const rows = analyzed.map((f) => {
       const cat = db.categories.find((c) => c.id === f.categoryId);
       let kwOk = "";
@@ -331,7 +372,17 @@ function MultilangPage() {
         f.variants ? f.variants.length : 0,
         kwOk,
         kwMiss,
-        f.variants ? f.variants.map((v) => v.name + " (" + v.languages.map((l) => l.code).join(", ") + ")").join(" | ") : "",
+        f.variants
+          ? f.variants
+              .map(
+                (v) =>
+                  v.name +
+                  " (" +
+                  v.languages.map((l) => l.code).join(", ") +
+                  ")",
+              )
+              .join(" | ")
+          : "",
       ]
         .map((v) => '"' + String(v).replace(/"/g, '""') + '"')
         .join(",");
@@ -351,11 +402,18 @@ function MultilangPage() {
   const handleCreateCategoryModal = async () => {
     if (!catModalName.trim()) return;
     try {
-      const cat = await createCategory({ data: { projectId, name: catModalName.trim() } });
+      const cat = await createCategory({
+        data: { projectId, name: catModalName.trim() },
+      });
       // Si hay keywords, actualizar inmediatamente
-      const keywords = catModalKeywords.split("\n").map((l) => l.trim()).filter((l) => l);
+      const keywords = catModalKeywords
+        .split("\n")
+        .map((l) => l.trim())
+        .filter((l) => l);
       if (keywords.length > 0) {
-        await updateCategory({ data: { projectId, categoryId: cat.id, keywords } });
+        await updateCategory({
+          data: { projectId, categoryId: cat.id, keywords },
+        });
         cat.keywords = keywords;
       }
       setDb((prev) => ({ ...prev, categories: [...prev.categories, cat] }));
@@ -369,11 +427,18 @@ function MultilangPage() {
   };
 
   const handleDeleteCategory = async (catId: string) => {
-    if (!confirm("¿Eliminar esta categoría? Las fichas asignadas quedarán sin categoría.")) return;
+    if (
+      !confirm(
+        "¿Eliminar esta categoría? Las fichas asignadas quedarán sin categoría.",
+      )
+    )
+      return;
     await deleteCategory({ data: { projectId, categoryId: catId } });
     setDb((prev) => ({
       categories: prev.categories.filter((c) => c.id !== catId),
-      fichas: prev.fichas.map((f) => (f.categoryId === catId ? { ...f, categoryId: null } : f)),
+      fichas: prev.fichas.map((f) =>
+        f.categoryId === catId ? { ...f, categoryId: null } : f,
+      ),
     }));
     if (editingCatId === catId) setEditingCatId(null);
     toast.success("Categoría eliminada");
@@ -383,15 +448,23 @@ function MultilangPage() {
     if (!newKeyword.trim()) return;
     const cat = db.categories.find((c) => c.id === catId);
     if (!cat) return;
-    if (cat.keywords.some((k) => k.toLowerCase() === newKeyword.trim().toLowerCase())) {
+    if (
+      cat.keywords.some(
+        (k) => k.toLowerCase() === newKeyword.trim().toLowerCase(),
+      )
+    ) {
       toast.error("Keyword ya existe");
       return;
     }
     const updated = [...cat.keywords, newKeyword.trim()];
-    await updateCategory({ data: { projectId, categoryId: catId, keywords: updated } });
+    await updateCategory({
+      data: { projectId, categoryId: catId, keywords: updated },
+    });
     setDb((prev) => ({
       ...prev,
-      categories: prev.categories.map((c) => (c.id === catId ? { ...c, keywords: updated } : c)),
+      categories: prev.categories.map((c) =>
+        c.id === catId ? { ...c, keywords: updated } : c,
+      ),
     }));
     setNewKeyword("");
   };
@@ -400,18 +473,27 @@ function MultilangPage() {
     const cat = db.categories.find((c) => c.id === catId);
     if (!cat) return;
     const updated = cat.keywords.filter((_, i) => i !== idx);
-    await updateCategory({ data: { projectId, categoryId: catId, keywords: updated } });
+    await updateCategory({
+      data: { projectId, categoryId: catId, keywords: updated },
+    });
     setDb((prev) => ({
       ...prev,
-      categories: prev.categories.map((c) => (c.id === catId ? { ...c, keywords: updated } : c)),
+      categories: prev.categories.map((c) =>
+        c.id === catId ? { ...c, keywords: updated } : c,
+      ),
     }));
   };
 
-  const handleAssignCategory = async (fichaId: string, categoryId: string | null) => {
+  const handleAssignCategory = async (
+    fichaId: string,
+    categoryId: string | null,
+  ) => {
     await assignCategory({ data: { projectId, fichaId, categoryId } });
     setDb((prev) => ({
       ...prev,
-      fichas: prev.fichas.map((f) => (f.id === fichaId ? { ...f, categoryId } : f)),
+      fichas: prev.fichas.map((f) =>
+        f.id === fichaId ? { ...f, categoryId } : f,
+      ),
     }));
   };
 
@@ -423,7 +505,10 @@ function MultilangPage() {
       if (searchText && !name.includes(searchText.toLowerCase())) return false;
       if (filterCatId && f.categoryId !== filterCatId) return false;
       if (filterStatus === "multi") return f.variants && f.variants.length > 0;
-      if (filterStatus === "nomulti") return f.status === "analyzed" && (!f.variants || f.variants.length === 0);
+      if (filterStatus === "nomulti")
+        return (
+          f.status === "analyzed" && (!f.variants || f.variants.length === 0)
+        );
       if (filterStatus === "pending") return f.status === "pending";
       if (filterStatus === "error") return f.status === "error";
       return true;
@@ -434,17 +519,30 @@ function MultilangPage() {
   const stats = useMemo(() => {
     const total = db.fichas.length;
     const analyzed = db.fichas.filter((f) => f.status === "analyzed").length;
-    const multi = db.fichas.filter((f) => f.variants && f.variants.length > 0).length;
-    const nomulti = db.fichas.filter((f) => f.status === "analyzed" && (!f.variants || f.variants.length === 0)).length;
+    const multi = db.fichas.filter(
+      (f) => f.variants && f.variants.length > 0,
+    ).length;
+    const nomulti = db.fichas.filter(
+      (f) =>
+        f.status === "analyzed" && (!f.variants || f.variants.length === 0),
+    ).length;
     const pending = db.fichas.filter((f) => f.status === "pending").length;
     const errors = db.fichas.filter((f) => f.status === "error").length;
-    const totalVariants = db.fichas.reduce((s, f) => s + (f.variants ? f.variants.length : 0), 0);
+    const totalVariants = db.fichas.reduce(
+      (s, f) => s + (f.variants ? f.variants.length : 0),
+      0,
+    );
     return { total, analyzed, multi, nomulti, pending, errors, totalVariants };
   }, [db.fichas]);
 
   // ── Descubrimientos recientes ──
   const discoveries = useMemo(() => {
-    const discs: { fichaName: string; variantName: string; languages: { code: string; name: string }[]; discoveredAt: string }[] = [];
+    const discs: {
+      fichaName: string;
+      variantName: string;
+      languages: { code: string; name: string }[];
+      discoveredAt: string;
+    }[] = [];
     for (const f of db.fichas) {
       for (const v of f.variants || []) {
         if (v.discoveredAt) {
@@ -462,7 +560,9 @@ function MultilangPage() {
   }, [db.fichas]);
 
   const [showAllDiscoveries, setShowAllDiscoveries] = useState(false);
-  const visibleDiscoveries = showAllDiscoveries ? discoveries : discoveries.slice(0, 10);
+  const visibleDiscoveries = showAllDiscoveries
+    ? discoveries
+    : discoveries.slice(0, 10);
 
   // ── Toggle helpers ──
   const toggleCard = (id: string) => {
@@ -507,10 +607,26 @@ function MultilangPage() {
       {/* Stats */}
       {stats.total > 0 && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <StatCard label="Total fichas" value={stats.total} color="text-primary" />
-          <StatCard label="Analizadas" value={stats.analyzed} color="text-success" />
-          <StatCard label="Pendientes" value={stats.pending} color="text-warning" />
-          <StatCard label="Multi-idiomas" value={stats.totalVariants} color="text-secondary" />
+          <StatCard
+            label="Total fichas"
+            value={stats.total}
+            color="text-primary"
+          />
+          <StatCard
+            label="Analizadas"
+            value={stats.analyzed}
+            color="text-success"
+          />
+          <StatCard
+            label="Pendientes"
+            value={stats.pending}
+            color="text-warning"
+          />
+          <StatCard
+            label="Multi-idiomas"
+            value={stats.totalVariants}
+            color="text-secondary"
+          />
         </div>
       )}
 
@@ -523,12 +639,17 @@ function MultilangPage() {
             </h2>
             <div className="space-y-1.5">
               {visibleDiscoveries.map((d, i) => (
-                <div key={i} className="flex items-start justify-between gap-2 text-sm">
+                <div
+                  key={i}
+                  className="flex items-start justify-between gap-2 text-sm"
+                >
                   <div>
                     <span className="text-success font-medium">+</span>{" "}
                     <span className="font-semibold">{d.fichaName}</span>
                     {" — "}
-                    <span className="text-success">&ldquo;{d.variantName}&rdquo;</span>{" "}
+                    <span className="text-success">
+                      &ldquo;{d.variantName}&rdquo;
+                    </span>{" "}
                     <span className="text-base-content/50">
                       ({d.languages.map((l) => l.code).join(", ")})
                     </span>
@@ -544,7 +665,9 @@ function MultilangPage() {
                 className="btn btn-ghost btn-xs text-success mt-1"
                 onClick={() => setShowAllDiscoveries(!showAllDiscoveries)}
               >
-                {showAllDiscoveries ? "Ver menos" : `Ver todos (${discoveries.length})`}
+                {showAllDiscoveries
+                  ? "Ver menos"
+                  : `Ver todos (${discoveries.length})`}
               </button>
             )}
           </div>
@@ -586,10 +709,17 @@ function MultilangPage() {
             {placesResults.length > 0 && (
               <div className="mt-2 border border-base-300 rounded-lg overflow-hidden divide-y divide-base-300">
                 {placesResults.map((place) => (
-                  <div key={place.placeId} className="flex items-center justify-between px-4 py-3 hover:bg-base-300/50">
+                  <div
+                    key={place.placeId}
+                    className="flex items-center justify-between px-4 py-3 hover:bg-base-300/50"
+                  >
                     <div className="min-w-0 flex-1">
-                      <div className="font-semibold text-sm truncate">{place.name}</div>
-                      <div className="text-xs text-base-content/50 truncate">{place.address}</div>
+                      <div className="font-semibold text-sm truncate">
+                        {place.name}
+                      </div>
+                      <div className="text-xs text-base-content/50 truncate">
+                        {place.address}
+                      </div>
                       {(place.rating || place.totalReviews) && (
                         <div className="flex items-center gap-2 mt-0.5">
                           {place.rating && (
@@ -599,7 +729,9 @@ function MultilangPage() {
                             </span>
                           )}
                           {place.totalReviews != null && (
-                            <span className="text-xs text-base-content/50">{place.totalReviews} reseñas</span>
+                            <span className="text-xs text-base-content/50">
+                              {place.totalReviews} reseñas
+                            </span>
                           )}
                         </div>
                       )}
@@ -621,18 +753,26 @@ function MultilangPage() {
             className="btn btn-ghost btn-xs text-base-content/60 self-start mt-1"
             onClick={() => setShowBulkImport(!showBulkImport)}
           >
-            <ChevronRight className={`size-3 transition-transform ${showBulkImport ? "rotate-90" : ""}`} />
+            <ChevronRight
+              className={`size-3 transition-transform ${showBulkImport ? "rotate-90" : ""}`}
+            />
             Importar manualmente (URLs/nombres)
           </button>
           {showBulkImport && (
             <div className="mt-2">
               <textarea
                 className="textarea textarea-bordered w-full min-h-24 font-mono text-sm"
-                placeholder={"Pega URLs o nombres, uno por línea:\nhttps://www.google.com/maps?cid=...\nhttps://maps.app.goo.gl/...\nNombre del Negocio"}
+                placeholder={
+                  "Pega URLs o nombres, uno por línea:\nhttps://www.google.com/maps?cid=...\nhttps://maps.app.goo.gl/...\nNombre del Negocio"
+                }
                 value={bulkInput}
                 onChange={(e) => setBulkInput(e.target.value)}
               />
-              <button className="btn btn-primary btn-sm mt-2" onClick={handleAddBulk} disabled={!bulkInput.trim()}>
+              <button
+                className="btn btn-primary btn-sm mt-2"
+                onClick={handleAddBulk}
+                disabled={!bulkInput.trim()}
+              >
                 <Plus className="size-4" /> Agregar
               </button>
             </div>
@@ -642,11 +782,23 @@ function MultilangPage() {
 
       {/* Barra de acciones */}
       <div className="flex flex-wrap gap-2">
-        <button className="btn btn-success btn-sm" onClick={handleAnalyzePending} disabled={analyzing}>
-          {analyzing ? <Loader2 className="size-4 animate-spin" /> : <Search className="size-4" />}
+        <button
+          className="btn btn-success btn-sm"
+          onClick={handleAnalyzePending}
+          disabled={analyzing}
+        >
+          {analyzing ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : (
+            <Search className="size-4" />
+          )}
           Analizar pendientes ({stats.pending})
         </button>
-        <button className="btn btn-outline btn-sm" onClick={handleRefreshAll} disabled={analyzing}>
+        <button
+          className="btn btn-outline btn-sm"
+          onClick={handleRefreshAll}
+          disabled={analyzing}
+        >
           <RefreshCw className="size-4" /> Actualizar todas
         </button>
         <button className="btn btn-outline btn-sm" onClick={handleExportCSV}>
@@ -661,10 +813,16 @@ function MultilangPage() {
             <div className="flex items-center justify-between text-sm">
               <span className="flex items-center gap-2">
                 <Loader2 className="size-4 animate-spin text-primary" />
-                Analizando {analyzeProgress.current}/{analyzeProgress.total}: {analyzeProgress.name}
+                Analizando {analyzeProgress.current}/{analyzeProgress.total}:{" "}
+                {analyzeProgress.name}
               </span>
               <span className="text-base-content/60">
-                {Math.round((analyzeProgress.current / Math.max(analyzeProgress.total, 1)) * 100)}%
+                {Math.round(
+                  (analyzeProgress.current /
+                    Math.max(analyzeProgress.total, 1)) *
+                    100,
+                )}
+                %
               </span>
             </div>
             <progress
@@ -683,7 +841,10 @@ function MultilangPage() {
             <h2 className="card-title text-sm text-secondary">
               <Tag className="size-4" /> Categorías
             </h2>
-            <button className="btn btn-ghost btn-sm text-primary" onClick={() => setShowCatModal(true)}>
+            <button
+              className="btn btn-ghost btn-sm text-primary"
+              onClick={() => setShowCatModal(true)}
+            >
               <FolderPlus className="size-4" /> Nueva categoría
             </button>
           </div>
@@ -691,21 +852,33 @@ function MultilangPage() {
           {/* Chips de categorías */}
           <div className="flex flex-wrap gap-2">
             {db.categories.length === 0 && (
-              <span className="text-sm text-base-content/50">No hay categorías. Crea una para asignar keywords objetivo a tus fichas.</span>
+              <span className="text-sm text-base-content/50">
+                No hay categorías. Crea una para asignar keywords objetivo a tus
+                fichas.
+              </span>
             )}
             {db.categories.map((cat) => {
-              const count = db.fichas.filter((f) => f.categoryId === cat.id).length;
+              const count = db.fichas.filter(
+                (f) => f.categoryId === cat.id,
+              ).length;
               return (
                 <button
                   key={cat.id}
                   className={`btn btn-sm ${editingCatId === cat.id ? "btn-secondary" : "btn-outline"}`}
-                  onClick={() => setEditingCatId(editingCatId === cat.id ? null : cat.id)}
+                  onClick={() =>
+                    setEditingCatId(editingCatId === cat.id ? null : cat.id)
+                  }
                 >
                   {cat.name}
-                  <span className="badge badge-sm badge-secondary">{count}</span>
+                  <span className="badge badge-sm badge-secondary">
+                    {count}
+                  </span>
                   <span
                     className="text-error hover:text-error/70 ml-1"
-                    onClick={(e) => { e.stopPropagation(); handleDeleteCategory(cat.id); }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      void handleDeleteCategory(cat.id);
+                    }}
                   >
                     <X className="size-3" />
                   </span>
@@ -715,38 +888,53 @@ function MultilangPage() {
           </div>
 
           {/* Editor de keywords para categoría seleccionada */}
-          {editingCatId && (() => {
-            const cat = db.categories.find((c) => c.id === editingCatId);
-            if (!cat) return null;
-            return (
-              <div className="bg-base-300 rounded-lg p-4 mt-2">
-                <h3 className="text-sm font-semibold text-secondary mb-2">Keywords de &ldquo;{cat.name}&rdquo;</h3>
-                <div className="flex flex-wrap gap-2 mb-3">
-                  {cat.keywords.length === 0 && <span className="text-sm text-base-content/50">Sin keywords</span>}
-                  {cat.keywords.map((kw, idx) => (
-                    <span key={idx} className="badge badge-outline gap-1">
-                      {kw}
-                      <button onClick={() => handleRemoveKeyword(cat.id, idx)} className="text-error">
-                        <X className="size-3" />
-                      </button>
-                    </span>
-                  ))}
+          {editingCatId &&
+            (() => {
+              const cat = db.categories.find((c) => c.id === editingCatId);
+              if (!cat) return null;
+              return (
+                <div className="bg-base-300 rounded-lg p-4 mt-2">
+                  <h3 className="text-sm font-semibold text-secondary mb-2">
+                    Keywords de &ldquo;{cat.name}&rdquo;
+                  </h3>
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    {cat.keywords.length === 0 && (
+                      <span className="text-sm text-base-content/50">
+                        Sin keywords
+                      </span>
+                    )}
+                    {cat.keywords.map((kw, idx) => (
+                      <span key={idx} className="badge badge-outline gap-1">
+                        {kw}
+                        <button
+                          onClick={() => handleRemoveKeyword(cat.id, idx)}
+                          className="text-error"
+                        >
+                          <X className="size-3" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                  <div className="flex gap-2">
+                    <input
+                      className="input input-bordered input-sm flex-1"
+                      placeholder="Nueva keyword..."
+                      value={newKeyword}
+                      onChange={(e) => setNewKeyword(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") void handleAddKeyword(cat.id);
+                      }}
+                    />
+                    <button
+                      className="btn btn-outline btn-sm"
+                      onClick={() => handleAddKeyword(cat.id)}
+                    >
+                      Agregar
+                    </button>
+                  </div>
                 </div>
-                <div className="flex gap-2">
-                  <input
-                    className="input input-bordered input-sm flex-1"
-                    placeholder="Nueva keyword..."
-                    value={newKeyword}
-                    onChange={(e) => setNewKeyword(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === "Enter") handleAddKeyword(cat.id); }}
-                  />
-                  <button className="btn btn-outline btn-sm" onClick={() => handleAddKeyword(cat.id)}>
-                    Agregar
-                  </button>
-                </div>
-              </div>
-            );
-          })()}
+              );
+            })()}
         </div>
       </div>
 
@@ -758,8 +946,16 @@ function MultilangPage() {
               {(
                 [
                   { key: "all", label: "Todas", count: stats.total },
-                  { key: "multi", label: "Con multiidioma", count: stats.multi },
-                  { key: "nomulti", label: "Sin multiidioma", count: stats.nomulti },
+                  {
+                    key: "multi",
+                    label: "Con multiidioma",
+                    count: stats.multi,
+                  },
+                  {
+                    key: "nomulti",
+                    label: "Sin multiidioma",
+                    count: stats.nomulti,
+                  },
                   { key: "pending", label: "Pendientes", count: stats.pending },
                   { key: "error", label: "Errores", count: stats.errors },
                 ] as const
@@ -798,7 +994,8 @@ function MultilangPage() {
               <option value="">Todas las categorías</option>
               {db.categories.map((c) => (
                 <option key={c.id} value={c.id}>
-                  {c.name} ({db.fichas.filter((f) => f.categoryId === c.id).length})
+                  {c.name} (
+                  {db.fichas.filter((f) => f.categoryId === c.id).length})
                 </option>
               ))}
             </select>
@@ -809,14 +1006,23 @@ function MultilangPage() {
       {/* Barra de acciones bulk */}
       {selectedFichas.size > 0 && (
         <div className="flex items-center gap-3 bg-primary/10 rounded-lg px-4 py-2">
-          <span className="text-sm font-medium">{selectedFichas.size} seleccionadas</span>
-          <button className="btn btn-success btn-xs" onClick={handleBulkAnalyze} disabled={analyzing}>
+          <span className="text-sm font-medium">
+            {selectedFichas.size} seleccionadas
+          </span>
+          <button
+            className="btn btn-success btn-xs"
+            onClick={handleBulkAnalyze}
+            disabled={analyzing}
+          >
             <RefreshCw className="size-3" /> Analizar
           </button>
           <button className="btn btn-error btn-xs" onClick={handleBulkDelete}>
             <Trash2 className="size-3" /> Borrar
           </button>
-          <button className="btn btn-ghost btn-xs" onClick={() => setSelectedFichas(new Set())}>
+          <button
+            className="btn btn-ghost btn-xs"
+            onClick={() => setSelectedFichas(new Set())}
+          >
             Deseleccionar
           </button>
         </div>
@@ -830,7 +1036,10 @@ function MultilangPage() {
             <input
               type="checkbox"
               className="checkbox checkbox-xs"
-              checked={filteredFichas.length > 0 && selectedFichas.size === filteredFichas.length}
+              checked={
+                filteredFichas.length > 0 &&
+                selectedFichas.size === filteredFichas.length
+              }
               onChange={toggleSelectAll}
             />
             <span>Seleccionar todas</span>
@@ -850,13 +1059,17 @@ function MultilangPage() {
               onToggleSelect={() => toggleSelect(ficha.id)}
               onAnalyze={() => handleAnalyzeOne(ficha.id)}
               onDelete={() => handleDeleteOne(ficha.id)}
-              onAssignCategory={(catId) => handleAssignCategory(ficha.id, catId)}
+              onAssignCategory={(catId) =>
+                handleAssignCategory(ficha.id, catId)
+              }
               analyzing={analyzing}
             />
           ))}
 
           {filteredFichas.length === 0 && (
-            <p className="text-center text-base-content/50 py-8">No hay fichas que coincidan con los filtros</p>
+            <p className="text-center text-base-content/50 py-8">
+              No hay fichas que coincidan con los filtros
+            </p>
           )}
         </div>
       )}
@@ -864,7 +1077,9 @@ function MultilangPage() {
       {stats.total === 0 && (
         <div className="bg-base-200 rounded-lg py-12 text-center">
           <p className="text-base-content/50">No hay fichas</p>
-          <p className="text-base-content/40 text-sm">Busca tu negocio arriba para empezar</p>
+          <p className="text-base-content/40 text-sm">
+            Busca tu negocio arriba para empezar
+          </p>
         </div>
       )}
 
@@ -875,37 +1090,61 @@ function MultilangPage() {
             <h3 className="font-bold text-lg">Nueva categoría</h3>
             <div className="mt-4 space-y-4">
               <div>
-                <label className="label"><span className="label-text">Nombre</span></label>
+                <label className="label">
+                  <span className="label-text">Nombre</span>
+                </label>
                 <input
                   type="text"
                   className="input input-bordered w-full"
                   placeholder="Ej: Reformas"
                   value={catModalName}
                   onChange={(e) => setCatModalName(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter") handleCreateCategoryModal(); }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") void handleCreateCategoryModal();
+                  }}
                   autoFocus
                 />
               </div>
               <div>
-                <label className="label"><span className="label-text">Keywords objetivo (una por línea, en español)</span></label>
+                <label className="label">
+                  <span className="label-text">
+                    Keywords objetivo (una por línea, en español)
+                  </span>
+                </label>
                 <textarea
                   className="textarea textarea-bordered w-full min-h-28"
-                  placeholder={"reforma cocina\nreforma baño\nreformas integrales"}
+                  placeholder={
+                    "reforma cocina\nreforma baño\nreformas integrales"
+                  }
                   value={catModalKeywords}
                   onChange={(e) => setCatModalKeywords(e.target.value)}
                 />
               </div>
             </div>
             <div className="modal-action">
-              <button className="btn" onClick={() => { setShowCatModal(false); setCatModalName(""); setCatModalKeywords(""); }}>
+              <button
+                className="btn"
+                onClick={() => {
+                  setShowCatModal(false);
+                  setCatModalName("");
+                  setCatModalKeywords("");
+                }}
+              >
                 Cancelar
               </button>
-              <button className="btn btn-primary" onClick={handleCreateCategoryModal} disabled={!catModalName.trim()}>
+              <button
+                className="btn btn-primary"
+                onClick={handleCreateCategoryModal}
+                disabled={!catModalName.trim()}
+              >
                 Crear
               </button>
             </div>
           </div>
-          <div className="modal-backdrop" onClick={() => setShowCatModal(false)} />
+          <div
+            className="modal-backdrop"
+            onClick={() => setShowCatModal(false)}
+          />
         </div>
       )}
     </div>
@@ -916,7 +1155,15 @@ function MultilangPage() {
 // Componentes auxiliares
 // ============================================================================
 
-function StatCard({ label, value, color }: { label: string; value: number; color: string }) {
+function StatCard({
+  label,
+  value,
+  color,
+}: {
+  label: string;
+  value: number;
+  color: string;
+}) {
   return (
     <div className="card bg-base-200 shadow-sm">
       <div className="card-body items-center py-4">
@@ -962,16 +1209,22 @@ function FichaRow({
   // Dot de color según estado
   const dotColor =
     status === "analyzed"
-      ? hasMul ? "bg-success" : "bg-warning"
-      : status === "analyzing" ? "bg-primary animate-pulse"
-      : status === "error" ? "bg-error"
-      : "bg-base-content/30";
+      ? hasMul
+        ? "bg-success"
+        : "bg-warning"
+      : status === "analyzing"
+        ? "bg-primary animate-pulse"
+        : status === "error"
+          ? "bg-error"
+          : "bg-base-content/30";
 
   // Stats inline
-  const statsText = status === "analyzed"
-    ? `${ficha.variants?.length || 0} multi-idiomas · ${ficha.totalLanguagesChecked} idiomas${ficha.lastAnalyzed ? ` · ${new Date(ficha.lastAnalyzed).toLocaleDateString("es-ES")}` : ""}`
-    : status === "error" ? "Error"
-    : "Pendiente";
+  const statsText =
+    status === "analyzed"
+      ? `${ficha.variants?.length || 0} multi-idiomas · ${ficha.totalLanguagesChecked} idiomas${ficha.lastAnalyzed ? ` · ${new Date(ficha.lastAnalyzed).toLocaleDateString("es-ES")}` : ""}`
+      : status === "error"
+        ? "Error"
+        : "Pendiente";
 
   const cat = categories.find((c) => c.id === ficha.categoryId);
 
@@ -988,19 +1241,39 @@ function FichaRow({
         />
 
         {/* Dot de estado */}
-        <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${dotColor}`} />
+        <span
+          className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${dotColor}`}
+        />
 
         {/* Nombre + stats (clickable para expandir) */}
         <div className="flex-1 min-w-0 cursor-pointer" onClick={onToggle}>
           <div className="flex items-center gap-2 flex-wrap">
             <span className="font-semibold text-sm truncate">{name}</span>
-            {cat && <span className="badge badge-xs badge-secondary badge-outline">{cat.name}</span>}
-            {cat && status === "analyzed" && cat.keywords.length > 0 && (() => {
-              const ks = computeKeywordStatus(ficha, cat);
-              const pct = Math.round((ks.found.length / cat.keywords.length) * 100);
-              const cl = pct === 100 ? "badge-success" : pct >= 50 ? "badge-warning" : "badge-error";
-              return <span className={`badge badge-xs ${cl} badge-outline`}>{ks.found.length}/{cat.keywords.length} kw</span>;
-            })()}
+            {cat && (
+              <span className="badge badge-xs badge-secondary badge-outline">
+                {cat.name}
+              </span>
+            )}
+            {cat &&
+              status === "analyzed" &&
+              cat.keywords.length > 0 &&
+              (() => {
+                const ks = computeKeywordStatus(ficha, cat);
+                const pct = Math.round(
+                  (ks.found.length / cat.keywords.length) * 100,
+                );
+                const cl =
+                  pct === 100
+                    ? "badge-success"
+                    : pct >= 50
+                      ? "badge-warning"
+                      : "badge-error";
+                return (
+                  <span className={`badge badge-xs ${cl} badge-outline`}>
+                    {ks.found.length}/{cat.keywords.length} kw
+                  </span>
+                );
+              })()}
           </div>
           <div className="text-xs text-base-content/50">{statsText}</div>
         </div>
@@ -1010,7 +1283,10 @@ function FichaRow({
           <button
             className="btn btn-ghost btn-xs btn-square"
             title="Analizar"
-            onClick={(e) => { e.stopPropagation(); onAnalyze(); }}
+            onClick={(e) => {
+              e.stopPropagation();
+              onAnalyze();
+            }}
             disabled={analyzing}
           >
             <RefreshCw className="size-3.5" />
@@ -1030,16 +1306,26 @@ function FichaRow({
           <button
             className="btn btn-ghost btn-xs btn-square text-error"
             title="Eliminar"
-            onClick={(e) => { e.stopPropagation(); onDelete(); }}
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete();
+            }}
           >
             <Trash2 className="size-3.5" />
           </button>
           <button
             className="btn btn-ghost btn-xs btn-square"
             title={expanded ? "Colapsar" : "Expandir"}
-            onClick={(e) => { e.stopPropagation(); onToggle(); }}
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggle();
+            }}
           >
-            {expanded ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
+            {expanded ? (
+              <ChevronUp className="size-3.5" />
+            ) : (
+              <ChevronDown className="size-3.5" />
+            )}
           </button>
         </div>
       </div>
@@ -1063,7 +1349,9 @@ function FichaRow({
                 <div className="text-xs uppercase text-base-content/50 tracking-wide">
                   Nombre base ({ficha.baseLanguages?.length || 0} idiomas)
                 </div>
-                <div className="text-lg font-semibold mt-1">{ficha.baseName}</div>
+                <div className="text-lg font-semibold mt-1">
+                  {ficha.baseName}
+                </div>
                 <div className="text-xs text-base-content/50 mt-1">
                   {ficha.baseLanguages?.map((l) => l.code).join(", ")}
                 </div>
@@ -1072,19 +1360,29 @@ function FichaRow({
               {/* Variantes multiidioma */}
               {hasMul ? (
                 ficha.variants.map((v, idx) => (
-                  <div key={idx} className="border border-success/20 bg-success/5 rounded-lg p-3 mt-2">
+                  <div
+                    key={idx}
+                    className="border border-success/20 bg-success/5 rounded-lg p-3 mt-2"
+                  >
                     <div className="font-semibold text-success flex items-center gap-2">
                       &ldquo;{v.name}&rdquo;
                       {v.discoveredAt && (
                         <span className="text-xs text-info font-normal badge badge-xs badge-info badge-outline">
-                          Descubierto {new Date(v.discoveredAt).toLocaleDateString("es-ES")}
+                          Descubierto{" "}
+                          {new Date(v.discoveredAt).toLocaleDateString("es-ES")}
                         </span>
                       )}
                     </div>
                     <div className="flex flex-wrap gap-1 mt-2">
                       {v.languages.map((l) => (
-                        <span key={l.code} className="badge badge-sm badge-ghost">
-                          <strong className="text-primary mr-1">{l.code}</strong>{l.name}
+                        <span
+                          key={l.code}
+                          className="badge badge-sm badge-ghost"
+                        >
+                          <strong className="text-primary mr-1">
+                            {l.code}
+                          </strong>
+                          {l.name}
                         </span>
                       ))}
                     </div>
@@ -1092,37 +1390,63 @@ function FichaRow({
                 ))
               ) : (
                 <div className="alert alert-warning mt-2 text-sm">
-                  Mismo nombre en los {ficha.totalLanguagesChecked} idiomas. No tiene multiidiomas configurados.
+                  Mismo nombre en los {ficha.totalLanguagesChecked} idiomas. No
+                  tiene multiidiomas configurados.
                 </div>
               )}
 
               {/* Estado de keywords */}
-              {cat && cat.keywords.length > 0 && (() => {
-                const ks = computeKeywordStatus(ficha, cat);
-                const pct = Math.round((ks.found.length / cat.keywords.length) * 100);
-                return (
-                  <div className="mt-3">
-                    <div className="text-sm font-semibold text-base-content/60 mb-1">
-                      Keywords {ks.found.length}/{cat.keywords.length}
+              {cat &&
+                cat.keywords.length > 0 &&
+                (() => {
+                  const ks = computeKeywordStatus(ficha, cat);
+                  const pct = Math.round(
+                    (ks.found.length / cat.keywords.length) * 100,
+                  );
+                  return (
+                    <div className="mt-3">
+                      <div className="text-sm font-semibold text-base-content/60 mb-1">
+                        Keywords {ks.found.length}/{cat.keywords.length}
+                      </div>
+                      <progress
+                        className={`progress w-full ${pct === 100 ? "progress-success" : "progress-primary"}`}
+                        value={ks.found.length}
+                        max={cat.keywords.length}
+                      />
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {ks.found.map((k) => (
+                          <span
+                            key={k.keyword}
+                            className="badge badge-sm badge-success badge-outline"
+                          >
+                            {k.keyword}
+                          </span>
+                        ))}
+                        {ks.missing.map((k) => (
+                          <span
+                            key={k}
+                            className="badge badge-sm badge-error badge-outline"
+                          >
+                            {k}
+                          </span>
+                        ))}
+                      </div>
                     </div>
-                    <progress className={`progress w-full ${pct === 100 ? "progress-success" : "progress-primary"}`} value={ks.found.length} max={cat.keywords.length} />
-                    <div className="flex flex-wrap gap-1 mt-2">
-                      {ks.found.map((k) => (
-                        <span key={k.keyword} className="badge badge-sm badge-success badge-outline">{k.keyword}</span>
-                      ))}
-                      {ks.missing.map((k) => (
-                        <span key={k} className="badge badge-sm badge-error badge-outline">{k}</span>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })()}
+                  );
+                })()}
 
               {/* Tabla completa de idiomas */}
               {ficha.allResults && ficha.allResults.length > 0 && (
                 <>
-                  <button className="btn btn-ghost btn-xs text-primary mt-3" onClick={(e) => { e.stopPropagation(); onToggleLangTable(); }}>
-                    <Eye className="size-3" /> {langTableExpanded ? "Ocultar" : "Ver"} tabla completa
+                  <button
+                    className="btn btn-ghost btn-xs text-primary mt-3"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onToggleLangTable();
+                    }}
+                  >
+                    <Eye className="size-3" />{" "}
+                    {langTableExpanded ? "Ocultar" : "Ver"} tabla completa
                   </button>
                   {langTableExpanded && (
                     <div className="max-h-72 overflow-y-auto mt-2 rounded-lg border border-base-300">
@@ -1136,7 +1460,12 @@ function FichaRow({
                         </thead>
                         <tbody>
                           {ficha.allResults.map((r) => (
-                            <tr key={r.code} className={r.title !== ficha.baseName ? "text-success" : ""}>
+                            <tr
+                              key={r.code}
+                              className={
+                                r.title !== ficha.baseName ? "text-success" : ""
+                              }
+                            >
                               <td className="font-mono">{r.code}</td>
                               <td>{r.name}</td>
                               <td>{r.title}</td>
@@ -1153,7 +1482,9 @@ function FichaRow({
 
           {/* Pendiente */}
           {status === "pending" && (
-            <p className="text-sm text-base-content/50">Pendiente de analizar</p>
+            <p className="text-sm text-base-content/50">
+              Pendiente de analizar
+            </p>
           )}
 
           {/* Acciones de la ficha */}
@@ -1165,7 +1496,9 @@ function FichaRow({
             >
               <option value="">Sin categoría</option>
               {categories.map((c) => (
-                <option key={c.id} value={c.id}>{c.name}</option>
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
               ))}
             </select>
           </div>
@@ -1174,4 +1507,3 @@ function FichaRow({
     </div>
   );
 }
-

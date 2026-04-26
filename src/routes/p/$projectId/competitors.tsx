@@ -1,12 +1,10 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useState, useMemo } from "react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { useMutation } from "@tanstack/react-query";
 import {
   Search,
   Globe,
-  TrendingUp,
-  TrendingDown,
   FileDown,
   ArrowRightLeft,
   Users,
@@ -14,12 +12,13 @@ import {
   Zap,
   Shield,
 } from "lucide-react";
-import { findCompetitors, getKeywordIntersection } from "@/serverFunctions/competitors";
+import {
+  findCompetitors,
+  getKeywordIntersection,
+} from "@/serverFunctions/competitors";
 import { saveKeywords } from "@/serverFunctions/keywords";
-import type { CompetitorRow, KeywordIntersectionRow } from "@/types/competitors";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
 import {
-  LOCATIONS,
   getLanguageCode,
   formatNumber,
   csvEscape,
@@ -27,6 +26,7 @@ import {
   getPriorityTier,
   priorityTierClass,
 } from "@/client/features/keywords/utils";
+import { useProjectContext } from "@/client/hooks/useProjectContext";
 
 export const Route = createFileRoute("/p/$projectId/competitors")({
   component: CompetitorsPage,
@@ -36,28 +36,59 @@ type IntersectionMode = "common" | "gaps" | "advantages";
 
 function CompetitorsPage() {
   const { projectId } = Route.useParams();
+  const { project, locationCode: projectLocationCode } =
+    useProjectContext(projectId);
 
   // Form state
   const [domain, setDomain] = useState("");
   const [locationCode, setLocationCode] = useState(2724);
-  const [selectedCompetitor, setSelectedCompetitor] = useState<string | null>(null);
-  const [intersectionMode, setIntersectionMode] = useState<IntersectionMode>("gaps");
-  const [selectedKeywords, setSelectedKeywords] = useState<Set<string>>(new Set());
+
+  // Auto-rellenar cuando carga el proyecto (solo si el input está vacío).
+  useEffect(() => {
+    if (!project) return;
+    if (domain === "" && project.domain) setDomain(project.domain);
+    if (projectLocationCode != null && locationCode === 2724) {
+      setLocationCode(projectLocationCode);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [project, projectLocationCode]);
+  const [selectedCompetitor, setSelectedCompetitor] = useState<string | null>(
+    null,
+  );
+  const [intersectionMode, setIntersectionMode] =
+    useState<IntersectionMode>("gaps");
+  const [selectedKeywords, setSelectedKeywords] = useState<Set<string>>(
+    new Set(),
+  );
 
   // API mutations
   const competitorsMutation = useMutation({
-    mutationFn: (data: { domain: string; locationCode: number; languageCode: string; includeSubdomains: boolean }) =>
-      findCompetitors({ data }),
+    mutationFn: (data: {
+      domain: string;
+      locationCode: number;
+      languageCode: string;
+      includeSubdomains: boolean;
+    }) => findCompetitors({ data }),
   });
 
   const intersectionMutation = useMutation({
-    mutationFn: (data: { domain1: string; domain2: string; locationCode: number; languageCode: string; limit: number; mode: IntersectionMode }) =>
-      getKeywordIntersection({ data }),
+    mutationFn: (data: {
+      domain1: string;
+      domain2: string;
+      locationCode: number;
+      languageCode: string;
+      limit: number;
+      mode: IntersectionMode;
+    }) => getKeywordIntersection({ data }),
   });
 
   const saveMutation = useMutation({
-    mutationFn: (data: { projectId: string; keywords: string[]; locationCode: number; languageCode: string }) =>
-      saveKeywords({ data }),
+    mutationFn: (data: {
+      projectId: string;
+      keywords: string[];
+      locationCode: number;
+      languageCode: string;
+    }) => saveKeywords({ data }),
   });
 
   const competitors = competitorsMutation.data?.competitors ?? [];
@@ -121,21 +152,35 @@ function CompetitorsPage() {
         languageCode: getLanguageCode(locationCode),
       },
       {
-        onSuccess: () => toast.success(`${selectedKeywords.size} keywords guardadas`),
-        onError: (err) => toast.error(getStandardErrorMessage(err, "Error al guardar")),
+        onSuccess: () =>
+          toast.success(`${selectedKeywords.size} keywords guardadas`),
+        onError: (err) =>
+          toast.error(getStandardErrorMessage(err, "Error al guardar")),
       },
     );
   };
 
   const handleExportCsv = () => {
-    const source = selectedKeywords.size > 0
-      ? intersectionKeywords.filter((k) => selectedKeywords.has(k.keyword))
-      : intersectionKeywords;
+    const source =
+      selectedKeywords.size > 0
+        ? intersectionKeywords.filter((k) => selectedKeywords.has(k.keyword))
+        : intersectionKeywords;
     if (source.length === 0) {
       toast.error("No hay datos para exportar");
       return;
     }
-    const headers = ["Keyword", "Volume", "CPC", "Difficulty", "Intent", "Mi Posición", "Mi Tráfico", "Competidor Posición", "Competidor Tráfico", "Prioridad"];
+    const headers = [
+      "Keyword",
+      "Volume",
+      "CPC",
+      "Difficulty",
+      "Intent",
+      "Mi Posición",
+      "Mi Tráfico",
+      "Competidor Posición",
+      "Competidor Tráfico",
+      "Prioridad",
+    ];
     const csvRows = source.map((k) =>
       [
         csvEscape(k.keyword),
@@ -183,7 +228,8 @@ function CompetitorsPage() {
       <div className="shrink-0 px-4 md:px-6 pt-4 pb-2 max-w-8xl mx-auto w-full">
         <h1 className="text-xl font-bold mb-1">Análisis de Competencia</h1>
         <p className="text-sm text-base-content/60 mb-3">
-          Descubre tus competidores orgánicos, keywords comunes y oportunidades de posicionamiento.
+          Descubre tus competidores orgánicos, keywords comunes y oportunidades
+          de posicionamiento.
         </p>
 
         <form
@@ -218,7 +264,9 @@ function CompetitorsPage() {
             className="btn btn-primary btn-sm px-6 font-semibold"
             disabled={competitorsMutation.isPending}
           >
-            {competitorsMutation.isPending ? "Buscando..." : "Buscar Competidores"}
+            {competitorsMutation.isPending
+              ? "Buscando..."
+              : "Buscar Competidores"}
           </button>
         </form>
       </div>
@@ -230,8 +278,16 @@ function CompetitorsPage() {
             <LoadingState />
           ) : competitorsMutation.isError ? (
             <div className="mt-4 rounded-xl border border-error/30 bg-error/10 p-5 text-error">
-              <p className="text-sm">{getStandardErrorMessage(competitorsMutation.error, "Error buscando competidores")}</p>
-              <button className="btn btn-sm mt-2" onClick={() => competitorsMutation.reset()}>
+              <p className="text-sm">
+                {getStandardErrorMessage(
+                  competitorsMutation.error,
+                  "Error buscando competidores",
+                )}
+              </p>
+              <button
+                className="btn btn-sm mt-2"
+                onClick={() => competitorsMutation.reset()}
+              >
                 Reintentar
               </button>
             </div>
@@ -262,15 +318,25 @@ function CompetitorsPage() {
                         <tr
                           key={comp.domain}
                           className={`hover:bg-base-200/50 cursor-pointer ${
-                            selectedCompetitor === comp.domain ? "bg-primary/5 border-l-2 border-l-primary" : ""
+                            selectedCompetitor === comp.domain
+                              ? "bg-primary/5 border-l-2 border-l-primary"
+                              : ""
                           }`}
                           onClick={() => handleSelectCompetitor(comp.domain)}
                         >
                           <td className="font-medium">{comp.domain}</td>
-                          <td className="text-right tabular-nums">{formatNumber(comp.organicKeywords)}</td>
-                          <td className="text-right tabular-nums">{formatNumber(comp.organicTraffic)}</td>
-                          <td className="text-right tabular-nums">{formatNumber(comp.commonKeywords)}</td>
-                          <td className="text-right tabular-nums">{comp.avgPosition}</td>
+                          <td className="text-right tabular-nums">
+                            {formatNumber(comp.organicKeywords)}
+                          </td>
+                          <td className="text-right tabular-nums">
+                            {formatNumber(comp.organicTraffic)}
+                          </td>
+                          <td className="text-right tabular-nums">
+                            {formatNumber(comp.commonKeywords)}
+                          </td>
+                          <td className="text-right tabular-nums">
+                            {comp.avgPosition}
+                          </td>
                           <td className="text-center">
                             <button
                               className="btn btn-ghost btn-xs text-primary"
@@ -335,16 +401,23 @@ function CompetitorsPage() {
                   {intersectionMutation.isPending ? (
                     <div className="p-6 text-center">
                       <span className="loading loading-spinner loading-md" />
-                      <p className="text-sm text-base-content/50 mt-2">Analizando keywords...</p>
+                      <p className="text-sm text-base-content/50 mt-2">
+                        Analizando keywords...
+                      </p>
                     </div>
                   ) : intersectionMutation.isError ? (
                     <div className="p-4 text-error text-sm">
-                      {getStandardErrorMessage(intersectionMutation.error, "Error al comparar")}
+                      {getStandardErrorMessage(
+                        intersectionMutation.error,
+                        "Error al comparar",
+                      )}
                     </div>
                   ) : intersectionKeywords.length === 0 ? (
                     <div className="p-6 text-center text-base-content/50">
                       <Globe className="size-8 mx-auto mb-2 opacity-40" />
-                      <p className="text-sm">No se encontraron keywords en este modo.</p>
+                      <p className="text-sm">
+                        No se encontraron keywords en este modo.
+                      </p>
                     </div>
                   ) : (
                     <>
@@ -382,7 +455,11 @@ function CompetitorsPage() {
                                 <input
                                   type="checkbox"
                                   className="checkbox checkbox-xs"
-                                  checked={intersectionKeywords.length > 0 && selectedKeywords.size === intersectionKeywords.length}
+                                  checked={
+                                    intersectionKeywords.length > 0 &&
+                                    selectedKeywords.size ===
+                                      intersectionKeywords.length
+                                  }
                                   onChange={toggleAllKeywords}
                                 />
                               </th>
@@ -397,47 +474,75 @@ function CompetitorsPage() {
                           </thead>
                           <tbody>
                             {intersectionKeywords.map((kw) => {
-                              const priority = calculatePriorityScore(kw.searchVolume, kw.keywordDifficulty, kw.cpc);
+                              const priority = calculatePriorityScore(
+                                kw.searchVolume,
+                                kw.keywordDifficulty,
+                                kw.cpc,
+                              );
                               const tier = getPriorityTier(priority);
                               const tierClass = priorityTierClass(tier);
                               return (
-                                <tr key={kw.keyword} className="hover:bg-base-200/50">
+                                <tr
+                                  key={kw.keyword}
+                                  className="hover:bg-base-200/50"
+                                >
                                   <td>
                                     <input
                                       type="checkbox"
                                       className="checkbox checkbox-xs"
                                       checked={selectedKeywords.has(kw.keyword)}
-                                      onChange={() => toggleKeywordSelection(kw.keyword)}
+                                      onChange={() =>
+                                        toggleKeywordSelection(kw.keyword)
+                                      }
                                     />
                                   </td>
-                                  <td className="font-medium capitalize max-w-[250px] truncate" title={kw.keyword}>
+                                  <td
+                                    className="font-medium capitalize max-w-[250px] truncate"
+                                    title={kw.keyword}
+                                  >
                                     {kw.keyword}
                                   </td>
-                                  <td className="text-right tabular-nums">{formatNumber(kw.searchVolume)}</td>
-                                  <td className="text-right tabular-nums">{kw.keywordDifficulty ?? "-"}</td>
                                   <td className="text-right tabular-nums">
-                                    {kw.cpc != null ? `$${kw.cpc.toFixed(2)}` : "-"}
+                                    {formatNumber(kw.searchVolume)}
+                                  </td>
+                                  <td className="text-right tabular-nums">
+                                    {kw.keywordDifficulty ?? "-"}
+                                  </td>
+                                  <td className="text-right tabular-nums">
+                                    {kw.cpc != null
+                                      ? `$${kw.cpc.toFixed(2)}`
+                                      : "-"}
                                   </td>
                                   <td className="text-center">
                                     {kw.myRank ? (
-                                      <span className={`badge badge-sm ${kw.myRank <= 3 ? "badge-success" : kw.myRank <= 10 ? "badge-warning" : "badge-ghost"}`}>
+                                      <span
+                                        className={`badge badge-sm ${kw.myRank <= 3 ? "badge-success" : kw.myRank <= 10 ? "badge-warning" : "badge-ghost"}`}
+                                      >
                                         #{kw.myRank}
                                       </span>
                                     ) : (
-                                      <span className="text-base-content/30">—</span>
+                                      <span className="text-base-content/30">
+                                        —
+                                      </span>
                                     )}
                                   </td>
                                   <td className="text-center">
                                     {kw.competitorRank ? (
-                                      <span className={`badge badge-sm ${kw.competitorRank <= 3 ? "badge-success" : kw.competitorRank <= 10 ? "badge-warning" : "badge-ghost"}`}>
+                                      <span
+                                        className={`badge badge-sm ${kw.competitorRank <= 3 ? "badge-success" : kw.competitorRank <= 10 ? "badge-warning" : "badge-ghost"}`}
+                                      >
                                         #{kw.competitorRank}
                                       </span>
                                     ) : (
-                                      <span className="text-base-content/30">—</span>
+                                      <span className="text-base-content/30">
+                                        —
+                                      </span>
                                     )}
                                   </td>
                                   <td className="text-center">
-                                    <span className={`badge badge-sm ${tierClass}`}>
+                                    <span
+                                      className={`badge badge-sm ${tierClass}`}
+                                    >
                                       {priority}
                                     </span>
                                   </td>
@@ -453,17 +558,65 @@ function CompetitorsPage() {
               )}
             </div>
           ) : !competitorsMutation.data ? (
-            /* Empty state */
-            <div className="mt-8 text-center space-y-3">
-              <Users className="size-12 mx-auto text-base-content/30" />
-              <p className="text-lg font-medium text-base-content/70">
-                Introduce tu dominio para descubrir competidores
-              </p>
-              <p className="text-sm text-base-content/50 max-w-md mx-auto">
-                Analizaremos qué dominios compiten contigo por las mismas keywords
-                orgánicas y te mostraremos oportunidades de posicionamiento.
-              </p>
-            </div>
+            /* Empty state: CTA específico si el proyecto tiene dominio */
+            project?.domain ? (
+              <div className="mt-8 text-center space-y-3">
+                <Users className="size-12 mx-auto text-primary" />
+                <p className="text-lg font-semibold text-base-content">
+                  Descubre los competidores de{" "}
+                  <span className="font-mono text-primary">
+                    {project.domain}
+                  </span>
+                </p>
+                <p className="text-sm text-base-content/60 max-w-md mx-auto">
+                  Analizaremos qué dominios compiten contigo por las mismas
+                  keywords orgánicas y te mostraremos oportunidades de
+                  posicionamiento.
+                </p>
+                <button
+                  className="btn btn-sm btn-primary gap-1"
+                  onClick={() => {
+                    const d = project.domain?.trim();
+                    if (!d) return;
+                    setDomain(d);
+                    setSelectedCompetitor(null);
+                    setSelectedKeywords(new Set());
+                    competitorsMutation.mutate({
+                      domain: d,
+                      locationCode,
+                      languageCode: getLanguageCode(locationCode),
+                      includeSubdomains: true,
+                    });
+                  }}
+                >
+                  <Search className="size-3.5" />
+                  Buscar competidores
+                </button>
+              </div>
+            ) : (
+              <div className="mt-8 text-center space-y-3">
+                <Users className="size-12 mx-auto text-base-content/30" />
+                <p className="text-lg font-medium text-base-content/70">
+                  Introduce tu dominio para descubrir competidores
+                </p>
+                <p className="text-sm text-base-content/50 max-w-md mx-auto">
+                  Analizaremos qué dominios compiten contigo por las mismas
+                  keywords orgánicas y te mostraremos oportunidades de
+                  posicionamiento.
+                </p>
+                <p className="text-xs text-base-content/40">
+                  Sugerencia: configura un dominio en{" "}
+                  <Link
+                    to="/p/$projectId/settings"
+                    params={{ projectId }}
+                    className="link link-primary"
+                  >
+                    ajustes del proyecto
+                  </Link>
+                  .
+                </p>
+              </div>
+            )
           ) : (
             <div className="mt-8 text-center space-y-3">
               <Globe className="size-12 mx-auto text-base-content/30" />

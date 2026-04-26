@@ -122,16 +122,58 @@ export type KeywordCluster = {
 };
 
 const STOP_WORDS = new Set([
-  "de", "la", "el", "en", "y", "a", "los", "las", "del", "un", "una",
-  "por", "con", "para", "que", "se", "al", "es", "lo", "como", "más",
-  "o", "su", "le", "ya", "no", "the", "and", "or", "of", "in", "to",
-  "for", "is", "on", "at", "it", "a", "an", "vs", "with", "from",
+  "de",
+  "la",
+  "el",
+  "en",
+  "y",
+  "a",
+  "los",
+  "las",
+  "del",
+  "un",
+  "una",
+  "por",
+  "con",
+  "para",
+  "que",
+  "se",
+  "al",
+  "es",
+  "lo",
+  "como",
+  "más",
+  "o",
+  "su",
+  "le",
+  "ya",
+  "no",
+  "the",
+  "and",
+  "or",
+  "of",
+  "in",
+  "to",
+  "for",
+  "is",
+  "on",
+  "at",
+  "it",
+  "a",
+  "an",
+  "vs",
+  "with",
+  "from",
 ]);
 
-export function clusterKeywords<T extends { keyword: string; searchVolume: number | null; keywordDifficulty: number | null; cpc: number | null }>(
-  rows: T[],
-  seedKeyword?: string,
-): KeywordCluster[] {
+export function clusterKeywords<
+  T extends {
+    keyword: string;
+    searchVolume: number | null;
+    keywordDifficulty: number | null;
+    cpc: number | null;
+  },
+>(rows: T[], _seedKeyword?: string): KeywordCluster[] {
   if (rows.length === 0) return [];
 
   const tokenized = rows.map((r) => ({
@@ -161,7 +203,7 @@ export function clusterKeywords<T extends { keyword: string; searchVolume: numbe
 
   const validBigrams = [...bigramCount.entries()]
     .filter(([, count]) => count >= 2)
-    .sort((a, b) => b[1] - a[1]);
+    .toSorted((a, b) => b[1] - a[1]);
 
   const assigned = new Set<string>();
   const clusters: KeywordCluster[] = [];
@@ -179,10 +221,17 @@ export function clusterKeywords<T extends { keyword: string; searchVolume: numbe
     for (const m of matching) assigned.add(m.keyword);
 
     const totalVol = matching.reduce((s, m) => s + m.volume, 0);
-    const avgDiff = Math.round(matching.reduce((s, m) => s + m.difficulty, 0) / matching.length);
-    const avgCpc = +(matching.reduce((s, m) => s + m.cpc, 0) / matching.length).toFixed(2);
+    const avgDiff = Math.round(
+      matching.reduce((s, m) => s + m.difficulty, 0) / matching.length,
+    );
+    const avgCpc = +(
+      matching.reduce((s, m) => s + m.cpc, 0) / matching.length
+    ).toFixed(2);
     const avgPriority = Math.round(
-      matching.reduce((s, m) => s + calculatePriorityScore(m.volume, m.difficulty, m.cpc), 0) / matching.length,
+      matching.reduce(
+        (s, m) => s + calculatePriorityScore(m.volume, m.difficulty, m.cpc),
+        0,
+      ) / matching.length,
     );
 
     clusters.push({
@@ -199,10 +248,17 @@ export function clusterKeywords<T extends { keyword: string; searchVolume: numbe
   const unassigned = tokenized.filter((t) => !assigned.has(t.keyword));
   if (unassigned.length > 0) {
     const totalVol = unassigned.reduce((s, m) => s + m.volume, 0);
-    const avgDiff = Math.round(unassigned.reduce((s, m) => s + m.difficulty, 0) / unassigned.length);
-    const avgCpc = +(unassigned.reduce((s, m) => s + m.cpc, 0) / unassigned.length).toFixed(2);
+    const avgDiff = Math.round(
+      unassigned.reduce((s, m) => s + m.difficulty, 0) / unassigned.length,
+    );
+    const avgCpc = +(
+      unassigned.reduce((s, m) => s + m.cpc, 0) / unassigned.length
+    ).toFixed(2);
     const avgPriority = Math.round(
-      unassigned.reduce((s, m) => s + calculatePriorityScore(m.volume, m.difficulty, m.cpc), 0) / unassigned.length,
+      unassigned.reduce(
+        (s, m) => s + calculatePriorityScore(m.volume, m.difficulty, m.cpc),
+        0,
+      ) / unassigned.length,
     );
 
     clusters.push({

@@ -3,8 +3,9 @@ import { z } from "zod";
 export const researchKeywordsSchema = z.object({
   projectId: z.string().min(1),
   keywords: z.array(z.string().min(1)).min(1).max(200),
-  locationCode: z.number().int().positive().default(2840),
-  languageCode: z.string().min(2).max(8).default("en"),
+  // Default 2724 = España (mercado principal del producto).
+  locationCode: z.number().int().positive().default(2724),
+  languageCode: z.string().min(2).max(8).default("es"),
   resultLimit: z
     .union([z.literal(150), z.literal(300), z.literal(500)])
     .default(150),
@@ -26,8 +27,9 @@ export const deleteProjectSchema = z.object({
 export const saveKeywordsSchema = z.object({
   projectId: z.string().min(1),
   keywords: z.array(z.string().min(1)).min(1).max(200),
-  locationCode: z.number().int().positive().default(2840),
-  languageCode: z.string().min(2).max(8).default("en"),
+  // Default 2724 = España (mercado principal del producto).
+  locationCode: z.number().int().positive().default(2724),
+  languageCode: z.string().min(2).max(8).default("es"),
   metrics: z
     .array(
       z.object({
@@ -82,8 +84,9 @@ export type SaveKeywordsInput = z.infer<typeof saveKeywordsSchema>;
 export type RemoveSavedKeywordInput = z.infer<typeof removeSavedKeywordSchema>;
 export const serpAnalysisSchema = z.object({
   keyword: z.string().min(1),
-  locationCode: z.number().int().positive().default(2840),
-  languageCode: z.string().min(2).max(8).default("en"),
+  // Default 2724 = España (mercado principal del producto).
+  locationCode: z.number().int().positive().default(2724),
+  languageCode: z.string().min(2).max(8).default("es"),
 });
 
 export type GetSavedKeywordsInput = z.infer<typeof getSavedKeywordsSchema>;

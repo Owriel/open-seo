@@ -2,22 +2,34 @@ import { env } from "cloudflare:workers";
 
 // ---------------------------------------------------------------------------
 // Simple auth: username/password login with HMAC-signed cookie
+// Credenciales y secreto se leen de variables de entorno (env.AUTH_USERS, env.AUTH_SECRET)
 // ---------------------------------------------------------------------------
-
-const USERS: Record<string, string> = {
-  Jesus: "Alonsito1234_",
-  Marc: "SeoLocal1234_",
-};
 
 const COOKIE_NAME = "openseo_session";
 const MAX_AGE = 30 * 24 * 60 * 60; // 30 days
 
-function getSecret(): string {
+/** Lee usuarios desde env.AUTH_USERS (JSON: {"user":"pass"}) */
+function getUsers(): Record<string, string> {
   try {
-    return (env as unknown as Record<string, string>).AUTH_SECRET || "openseo-default-secret-2024";
+    const raw = env.AUTH_USERS;
+    if (!raw) return {};
+    const parsed: unknown = JSON.parse(raw);
+    if (typeof parsed !== "object" || parsed === null) return {};
+    const result: Record<string, string> = {};
+    for (const [k, v] of Object.entries(parsed)) {
+      if (typeof v === "string") result[k] = v;
+    }
+    return result;
   } catch {
-    return "openseo-default-secret-2024";
+    return {};
   }
+}
+
+function getSecret(): string {
+  const secret = env.AUTH_SECRET;
+  if (!secret)
+    throw new Error("AUTH_SECRET no configurado en variables de entorno");
+  return secret;
 }
 
 // ---------------------------------------------------------------------------
@@ -37,7 +49,11 @@ async function hmacSign(payload: string, secret: string): Promise<string> {
   return btoa(String.fromCharCode(...new Uint8Array(sig)));
 }
 
-async function hmacVerify(payload: string, signature: string, secret: string): Promise<boolean> {
+async function hmacVerify(
+  payload: string,
+  signature: string,
+  secret: string,
+): Promise<boolean> {
   const expected = await hmacSign(payload, secret);
   return expected === signature;
 }
@@ -77,8 +93,9 @@ export async function getAuthUser(request: Request): Promise<string | null> {
   const ts = parseInt(timestamp, 10);
   if (isNaN(ts) || Date.now() - ts > MAX_AGE * 1000) return null;
 
-  // Confirm this user still exists in our list
-  if (!(username in USERS)) return null;
+  // Confirmar que el usuario sigue existiendo
+  const users = getUsers();
+  if (!(username in users)) return null;
 
   return username;
 }
@@ -94,10 +111,13 @@ export async function handleAuth(request: Request): Promise<Response | null> {
   // ---- Login POST --------------------------------------------------------
   if (url.pathname === "/__auth/login" && request.method === "POST") {
     const form = await request.formData();
-    const username = (form.get("username") as string ?? "").trim();
-    const password = form.get("password") as string ?? "";
+    const rawUser = form.get("username");
+    const rawPass = form.get("password");
+    const username = (typeof rawUser === "string" ? rawUser : "").trim();
+    const password = typeof rawPass === "string" ? rawPass : "";
 
-    if (username in USERS && USERS[username] === password) {
+    const users = getUsers();
+    if (username in users && users[username] === password) {
       const secret = getSecret();
       const timestamp = Date.now().toString();
       const payload = `${username}:${timestamp}`;

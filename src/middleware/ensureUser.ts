@@ -24,13 +24,6 @@ function getAuthMode(): AuthMode {
     return value;
   }
 
-  if (value === "hosted") {
-    throw new AppError(
-      "INTERNAL_ERROR",
-      "AUTH_MODE=hosted is not implemented yet",
-    );
-  }
-
   return "cloudflare_access";
 }
 

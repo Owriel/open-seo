@@ -50,11 +50,11 @@ export function getExpectedCtr(position: number | null): number | null {
 
 // Pesos del framework de priorización
 const WEIGHTS = {
-  position: 0.30,
+  position: 0.3,
   impressions: 0.25,
-  intent: 0.20,    // Aproximado por CPC (mayor CPC = mayor intención comercial)
+  intent: 0.2, // Aproximado por CPC (mayor CPC = mayor intención comercial)
   ctrGap: 0.15,
-  traffic: 0.10,   // Tráfico estimado o clics como proxy de conversión
+  traffic: 0.1, // Tráfico estimado o clics como proxy de conversión
 };
 
 /**
@@ -129,7 +129,11 @@ export function classifyOpportunity(kw: OpportunityKeyword): OpportunityType[] {
   }
   const expectedCtr = getExpectedCtr(kw.position);
   const actualCtr = kw.ctr;
-  if (expectedCtr != null && actualCtr != null && actualCtr < expectedCtr * 0.7) {
+  if (
+    expectedCtr != null &&
+    actualCtr != null &&
+    actualCtr < expectedCtr * 0.7
+  ) {
     types.push("low_ctr");
   }
   return types;
@@ -171,7 +175,7 @@ export function detectCannibalization(
   }
 
   // Ordenar por número de URLs (más canibalización primero)
-  return groups.sort((a, b) => b.urls.length - a.urls.length);
+  return groups.toSorted((a, b) => b.urls.length - a.urls.length);
 }
 
 // ---------------------------------------------------------------------------
@@ -189,15 +193,18 @@ export function analyzeOpportunities(
   // Filtrar keywords por rango de posición e impresiones
   const filtered = keywords.filter((kw) => {
     if (kw.position == null) return false;
-    if (kw.position < filters.minPosition || kw.position > filters.maxPosition) return false;
+    if (kw.position < filters.minPosition || kw.position > filters.maxPosition)
+      return false;
     if (filters.minImpressions > 0) {
       const imp = kw.impressions ?? kw.searchVolume ?? 0;
       if (imp < filters.minImpressions) return false;
     }
-    if (filters.maxCtr != null && kw.ctr != null && kw.ctr > filters.maxCtr) return false;
+    if (filters.maxCtr != null && kw.ctr != null && kw.ctr > filters.maxCtr)
+      return false;
     if (filters.onlyWithCtrGap) {
       const expected = getExpectedCtr(kw.position);
-      if (expected == null || kw.ctr == null || kw.ctr >= expected) return false;
+      if (expected == null || kw.ctr == null || kw.ctr >= expected)
+        return false;
     }
     return true;
   });
@@ -205,7 +212,8 @@ export function analyzeOpportunities(
   // Calcular score y clasificar cada keyword
   const results: OpportunityResult[] = filtered.map((kw) => {
     const expectedCtr = getExpectedCtr(kw.position);
-    const ctrGap = expectedCtr != null && kw.ctr != null ? expectedCtr - kw.ctr : null;
+    const ctrGap =
+      expectedCtr != null && kw.ctr != null ? expectedCtr - kw.ctr : null;
     const types = classifyOpportunity(kw);
     if (cannibalizedKeywords.has(kw.keyword.toLowerCase().trim())) {
       types.push("cannibalized");
@@ -243,25 +251,25 @@ export function analyzeOpportunities(
 const COLUMN_MAPPINGS: Record<string, string> = {
   // Inglés
   "top queries": "keyword",
-  "query": "keyword",
-  "queries": "keyword",
+  query: "keyword",
+  queries: "keyword",
   "top pages": "url",
-  "page": "url",
-  "pages": "url",
-  "clicks": "clicks",
-  "impressions": "impressions",
-  "ctr": "ctr",
-  "position": "position",
+  page: "url",
+  pages: "url",
+  clicks: "clicks",
+  impressions: "impressions",
+  ctr: "ctr",
+  position: "position",
   "average position": "position",
   // Español
   "consultas principales": "keyword",
-  "consulta": "keyword",
-  "consultas": "keyword",
+  consulta: "keyword",
+  consultas: "keyword",
   "páginas principales": "url",
-  "página": "url",
-  "clics": "clicks",
-  "impresiones": "impressions",
-  "posición": "position",
+  página: "url",
+  clics: "clicks",
+  impresiones: "impressions",
+  posición: "position",
   "posición media": "position",
 };
 
@@ -277,7 +285,9 @@ export function normalizeGscHeaders(headers: string[]): Map<number, string> {
 }
 
 /** Parsea un valor de CTR (puede venir como "5.23%" o como 0.0523 o como 5.23) */
-export function parseCtrValue(raw: string | number | null | undefined): number | null {
+export function parseCtrValue(
+  raw: string | number | null | undefined,
+): number | null {
   if (raw == null) return null;
   const str = String(raw).trim().replace(",", ".");
   if (str === "" || str === "-") return null;
@@ -293,7 +303,9 @@ export function parseCtrValue(raw: string | number | null | undefined): number |
 }
 
 /** Parsea un valor numérico genérico */
-export function parseNumericValue(raw: string | number | null | undefined): number | null {
+export function parseNumericValue(
+  raw: string | number | null | undefined,
+): number | null {
   if (raw == null) return null;
   const str = String(raw).trim().replace(",", ".").replace(/\s/g, "");
   if (str === "" || str === "-") return null;

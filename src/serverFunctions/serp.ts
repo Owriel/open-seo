@@ -37,20 +37,24 @@ function generateRecommendations(
   topResults: SerpResultRow[],
 ): SerpRecommendation[] {
   const recs: SerpRecommendation[] = [];
-  const presentTypes = new Set(features.filter((f) => f.present).map((f) => f.type));
+  const presentTypes = new Set(
+    features.filter((f) => f.present).map((f) => f.type),
+  );
 
   if (presentTypes.has("featured_snippet")) {
     recs.push({
       type: "featured_snippet",
       title: "Optimiza para Featured Snippet",
-      description: "Hay un featured snippet activo. Estructura tu contenido con preguntas y respuestas directas, listas o tablas para capturarlo.",
+      description:
+        "Hay un featured snippet activo. Estructura tu contenido con preguntas y respuestas directas, listas o tablas para capturarlo.",
       priority: "alta",
     });
   } else {
     recs.push({
       type: "featured_snippet_opportunity",
       title: "Oportunidad de Featured Snippet",
-      description: "No hay featured snippet para esta keyword. Crea contenido con respuestas claras y directas para ocupar esta posición.",
+      description:
+        "No hay featured snippet para esta keyword. Crea contenido con respuestas claras y directas para ocupar esta posición.",
       priority: "media",
     });
   }
@@ -59,7 +63,8 @@ function generateRecommendations(
     recs.push({
       type: "people_also_ask",
       title: "Crea sección FAQ",
-      description: "Google muestra People Also Ask. Añade una sección de preguntas frecuentes con respuestas concisas y markup FAQ schema.",
+      description:
+        "Google muestra People Also Ask. Añade una sección de preguntas frecuentes con respuestas concisas y markup FAQ schema.",
       priority: "alta",
     });
   }
@@ -68,7 +73,8 @@ function generateRecommendations(
     recs.push({
       type: "video",
       title: "Incluye contenido en video",
-      description: "Hay resultados de video en la SERP. Crea un video explicativo y embébelo en tu contenido para competir en este carrusel.",
+      description:
+        "Hay resultados de video en la SERP. Crea un video explicativo y embébelo en tu contenido para competir en este carrusel.",
       priority: "media",
     });
   }
@@ -77,7 +83,8 @@ function generateRecommendations(
     recs.push({
       type: "local_pack",
       title: "Optimiza Google Business Profile",
-      description: "Aparece un Local Pack. Asegúrate de tener tu ficha de Google Business optimizada con categorías, fotos y reseñas.",
+      description:
+        "Aparece un Local Pack. Asegúrate de tener tu ficha de Google Business optimizada con categorías, fotos y reseñas.",
       priority: "alta",
     });
   }
@@ -86,7 +93,8 @@ function generateRecommendations(
     recs.push({
       type: "images",
       title: "Optimiza imágenes",
-      description: "Google muestra un carrusel de imágenes. Usa imágenes originales con alt text descriptivo y nombres de archivo optimizados.",
+      description:
+        "Google muestra un carrusel de imágenes. Usa imágenes originales con alt text descriptivo y nombres de archivo optimizados.",
       priority: "baja",
     });
   }
@@ -95,7 +103,8 @@ function generateRecommendations(
     recs.push({
       type: "shopping",
       title: "Intent transaccional detectado",
-      description: "Aparecen resultados de Shopping. Esta keyword tiene fuerte intent de compra. Considera contenido comparativo o de producto.",
+      description:
+        "Aparecen resultados de Shopping. Esta keyword tiene fuerte intent de compra. Considera contenido comparativo o de producto.",
       priority: "media",
     });
   }
@@ -104,7 +113,8 @@ function generateRecommendations(
     recs.push({
       type: "knowledge_panel",
       title: "Knowledge Panel activo",
-      description: "Google muestra un Knowledge Panel. Usa datos estructurados (Schema.org) para aumentar tus posibilidades de aparecer.",
+      description:
+        "Google muestra un Knowledge Panel. Usa datos estructurados (Schema.org) para aumentar tus posibilidades de aparecer.",
       priority: "baja",
     });
   }
@@ -112,14 +122,23 @@ function generateRecommendations(
   // Análisis de longitud/competencia de top 3
   const top3 = topResults.slice(0, 3);
   const top3Domains = top3.map((r) => r.domain);
-  const bigDomains = ["wikipedia.org", "amazon.es", "amazon.com", "youtube.com", "facebook.com"];
-  const hasBigCompetitors = top3Domains.some((d) => bigDomains.some((big) => d.includes(big)));
+  const bigDomains = [
+    "wikipedia.org",
+    "amazon.es",
+    "amazon.com",
+    "youtube.com",
+    "facebook.com",
+  ];
+  const hasBigCompetitors = top3Domains.some((d) =>
+    bigDomains.some((big) => d.includes(big)),
+  );
 
   if (hasBigCompetitors) {
     recs.push({
       type: "big_competitors",
       title: "Competencia fuerte en top 3",
-      description: "Hay dominios de gran autoridad en las primeras posiciones. Enfócate en long-tail o en un ángulo de contenido diferenciado.",
+      description:
+        "Hay dominios de gran autoridad en las primeras posiciones. Enfócate en long-tail o en un ángulo de contenido diferenciado.",
       priority: "media",
     });
   }
@@ -128,10 +147,10 @@ function generateRecommendations(
 }
 
 // Análisis de intent basado en tipos de resultado presentes
-function analyzeIntent(
-  features: SerpFeature[],
-): SerpIntentAnalysis {
-  const presentTypes = new Set(features.filter((f) => f.present).map((f) => f.type));
+function analyzeIntent(features: SerpFeature[]): SerpIntentAnalysis {
+  const presentTypes = new Set(
+    features.filter((f) => f.present).map((f) => f.type),
+  );
   const signals: string[] = [];
   let primaryIntent = "informacional";
 
@@ -183,13 +202,11 @@ export const analyzeSerpResults = createServerFn({ method: "POST" })
       languageCode: data.languageCode,
     });
 
-    const cachedRaw = await getCached(cacheKey) as SerpAnalysisResult | null;
+    const cachedRaw = await getCached<SerpAnalysisResult>(cacheKey);
     if (cachedRaw && cachedRaw.topResults?.length > 0) {
-      console.log("[SERP] Serving from cache:", cachedRaw.topResults.length, "results");
       return cachedRaw;
     }
 
-    console.log("[SERP] Cache miss, calling DataForSEO...");
     const serpItems = await fetchLiveSerpItemsRaw(
       data.keyword,
       data.locationCode,
@@ -226,7 +243,7 @@ export const analyzeSerpResults = createServerFn({ method: "POST" })
     }
     const dominantDomains: SerpDominantDomain[] = [...domainCounts.entries()]
       .map(([domain, count]) => ({ domain, count }))
-      .sort((a, b) => b.count - a.count)
+      .toSorted((a, b) => b.count - a.count)
       .slice(0, 10);
 
     // 4. Análisis de intent

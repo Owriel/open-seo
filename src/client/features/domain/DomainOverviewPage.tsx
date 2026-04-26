@@ -79,6 +79,9 @@ export function DomainOverviewPage({
               onClearHistory={state.clearHistory}
               onRemoveHistoryItem={state.removeHistoryItem}
               onSelectHistoryItem={state.handleHistorySelect}
+              // Permite al CTA del empty state lanzar el análisis con el
+              // dominio del proyecto sin tener que escribirlo en el input.
+              onAnalyzeDomain={(domain) => state.runSearch({ domain })}
             />
           </div>
         ) : (

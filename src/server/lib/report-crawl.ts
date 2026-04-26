@@ -25,13 +25,17 @@ const MAX_PAGES = 15;
 const FETCH_TIMEOUT = 10000;
 
 /** Fetch una URL con timeout */
-async function fetchPage(url: string): Promise<{ html: string; statusCode: number; responseTimeMs: number } | null> {
+async function fetchPage(url: string): Promise<{
+  html: string;
+  statusCode: number;
+  responseTimeMs: number;
+} | null> {
   try {
     const start = Date.now();
     const resp = await fetch(url, {
       headers: {
         "User-Agent": "OpenSeo-Bot/1.0 (SEO Audit)",
-        "Accept": "text/html",
+        Accept: "text/html",
       },
       redirect: "follow",
       signal: AbortSignal.timeout(FETCH_TIMEOUT),
@@ -45,15 +49,23 @@ async function fetchPage(url: string): Promise<{ html: string; statusCode: numbe
 }
 
 /** Analizar HTML de una página */
-function analyzePage(html: string, pageUrl: string, statusCode: number, responseTimeMs: number): CrawledPage {
+function analyzePage(
+  html: string,
+  pageUrl: string,
+  statusCode: number,
+  responseTimeMs: number,
+): CrawledPage {
   const $ = cheerio.load(html);
 
   const title = $("title").first().text().trim();
-  const metaDescription = $('meta[name="description"]').first().attr("content")?.trim() ?? "";
+  const metaDescription =
+    $('meta[name="description"]').first().attr("content")?.trim() ?? "";
   const canonical = $('link[rel="canonical"]').first().attr("href") ?? null;
 
   const h1s: string[] = [];
-  $("h1").each((_, el) => { h1s.push($(el).text().trim()); });
+  $("h1").each((_, el) => {
+    h1s.push($(el).text().trim());
+  });
 
   const images: Array<{ src: string | null; alt: string | null }> = [];
   $("img").each((_, el) => {
@@ -64,7 +76,12 @@ function analyzePage(html: string, pageUrl: string, statusCode: number, response
   });
 
   // Contar palabras del body (excluyendo scripts/styles)
-  const bodyText = $("body").clone().find("script, style, noscript").remove().end().text();
+  const bodyText = $("body")
+    .clone()
+    .find("script, style, noscript")
+    .remove()
+    .end()
+    .text();
   const wordCount = bodyText.split(/\s+/).filter(Boolean).length;
 
   const hasStructuredData = $('script[type="application/ld+json"]').length > 0;
@@ -106,31 +123,73 @@ function detectIssues(page: CrawledPage): TechnicalIssue[] {
 
   // Título
   if (!page.title) {
-    issues.push({ type: "missing_title", severity: "critical", page: shortUrl, description: "Sin etiqueta <title>" });
+    issues.push({
+      type: "missing_title",
+      severity: "critical",
+      page: shortUrl,
+      description: "Sin etiqueta <title>",
+    });
   } else if (page.title.length < 20) {
-    issues.push({ type: "short_title", severity: "warning", page: shortUrl, description: `Título muy corto (${page.title.length} caracteres)` });
+    issues.push({
+      type: "short_title",
+      severity: "warning",
+      page: shortUrl,
+      description: `Título muy corto (${page.title.length} caracteres)`,
+    });
   } else if (page.title.length > 65) {
-    issues.push({ type: "long_title", severity: "warning", page: shortUrl, description: `Título muy largo (${page.title.length} caracteres)` });
+    issues.push({
+      type: "long_title",
+      severity: "warning",
+      page: shortUrl,
+      description: `Título muy largo (${page.title.length} caracteres)`,
+    });
   }
 
   // Meta description
   if (!page.metaDescription) {
-    issues.push({ type: "missing_meta", severity: "critical", page: shortUrl, description: "Sin meta description" });
+    issues.push({
+      type: "missing_meta",
+      severity: "critical",
+      page: shortUrl,
+      description: "Sin meta description",
+    });
   } else if (page.metaDescription.length < 50) {
-    issues.push({ type: "short_meta", severity: "warning", page: shortUrl, description: `Meta description muy corta (${page.metaDescription.length} caracteres)` });
+    issues.push({
+      type: "short_meta",
+      severity: "warning",
+      page: shortUrl,
+      description: `Meta description muy corta (${page.metaDescription.length} caracteres)`,
+    });
   } else if (page.metaDescription.length > 160) {
-    issues.push({ type: "long_meta", severity: "warning", page: shortUrl, description: `Meta description muy larga (${page.metaDescription.length} caracteres)` });
+    issues.push({
+      type: "long_meta",
+      severity: "warning",
+      page: shortUrl,
+      description: `Meta description muy larga (${page.metaDescription.length} caracteres)`,
+    });
   }
 
   // H1
   if (page.h1s.length === 0) {
-    issues.push({ type: "missing_h1", severity: "critical", page: shortUrl, description: "Sin encabezado H1" });
+    issues.push({
+      type: "missing_h1",
+      severity: "critical",
+      page: shortUrl,
+      description: "Sin encabezado H1",
+    });
   } else if (page.h1s.length > 1) {
-    issues.push({ type: "multiple_h1", severity: "warning", page: shortUrl, description: `Múltiples H1 (${page.h1s.length})` });
+    issues.push({
+      type: "multiple_h1",
+      severity: "warning",
+      page: shortUrl,
+      description: `Múltiples H1 (${page.h1s.length})`,
+    });
   }
 
   // Imágenes sin alt
-  const imagesWithoutAlt = page.images.filter((img) => !img.alt || img.alt.trim() === "");
+  const imagesWithoutAlt = page.images.filter(
+    (img) => !img.alt || img.alt.trim() === "",
+  );
   if (imagesWithoutAlt.length > 0) {
     issues.push({
       type: "images_no_alt",
@@ -142,33 +201,65 @@ function detectIssues(page: CrawledPage): TechnicalIssue[] {
 
   // Contenido escaso
   if (page.wordCount < 100) {
-    issues.push({ type: "thin_content", severity: "warning", page: shortUrl, description: `Contenido escaso (${page.wordCount} palabras)` });
+    issues.push({
+      type: "thin_content",
+      severity: "warning",
+      page: shortUrl,
+      description: `Contenido escaso (${page.wordCount} palabras)`,
+    });
   }
 
   // Tiempo de respuesta lento
   if (page.responseTimeMs > 3000) {
-    issues.push({ type: "slow_response", severity: "critical", page: shortUrl, description: `Respuesta lenta (${(page.responseTimeMs / 1000).toFixed(1)}s)` });
+    issues.push({
+      type: "slow_response",
+      severity: "critical",
+      page: shortUrl,
+      description: `Respuesta lenta (${(page.responseTimeMs / 1000).toFixed(1)}s)`,
+    });
   } else if (page.responseTimeMs > 1500) {
-    issues.push({ type: "slow_response", severity: "warning", page: shortUrl, description: `Respuesta moderadamente lenta (${(page.responseTimeMs / 1000).toFixed(1)}s)` });
+    issues.push({
+      type: "slow_response",
+      severity: "warning",
+      page: shortUrl,
+      description: `Respuesta moderadamente lenta (${(page.responseTimeMs / 1000).toFixed(1)}s)`,
+    });
   }
 
   // Sin datos estructurados
   if (!page.hasStructuredData) {
-    issues.push({ type: "no_schema", severity: "info", page: shortUrl, description: "Sin datos estructurados (Schema.org)" });
+    issues.push({
+      type: "no_schema",
+      severity: "info",
+      page: shortUrl,
+      description: "Sin datos estructurados (Schema.org)",
+    });
   }
 
   // Código de estado
   if (page.statusCode >= 400) {
-    issues.push({ type: "error_status", severity: "critical", page: shortUrl, description: `Error HTTP ${page.statusCode}` });
+    issues.push({
+      type: "error_status",
+      severity: "critical",
+      page: shortUrl,
+      description: `Error HTTP ${page.statusCode}`,
+    });
   } else if (page.statusCode >= 300) {
-    issues.push({ type: "redirect", severity: "info", page: shortUrl, description: `Redirección HTTP ${page.statusCode}` });
+    issues.push({
+      type: "redirect",
+      severity: "info",
+      page: shortUrl,
+      description: `Redirección HTTP ${page.statusCode}`,
+    });
   }
 
   return issues;
 }
 
 /** Ejecutar mini-crawl completo */
-export async function runMiniCrawl(domain: string): Promise<ReportTechnicalHealth> {
+export async function runMiniCrawl(
+  domain: string,
+): Promise<ReportTechnicalHealth> {
   const startUrl = domain.startsWith("http") ? domain : `https://${domain}`;
 
   // 1. Crawlear la home
@@ -176,7 +267,14 @@ export async function runMiniCrawl(domain: string): Promise<ReportTechnicalHealt
   if (!homeResult) {
     return {
       pagesCrawled: 0,
-      issues: [{ type: "unreachable", severity: "critical", page: "/", description: "No se pudo acceder a la web" }],
+      issues: [
+        {
+          type: "unreachable",
+          severity: "critical",
+          page: "/",
+          description: "No se pudo acceder a la web",
+        },
+      ],
       issuesByType: { unreachable: 1 },
       criticalCount: 1,
       warningCount: 0,
@@ -184,7 +282,12 @@ export async function runMiniCrawl(domain: string): Promise<ReportTechnicalHealt
     };
   }
 
-  const homePage = analyzePage(homeResult.html, startUrl, homeResult.statusCode, homeResult.responseTimeMs);
+  const homePage = analyzePage(
+    homeResult.html,
+    startUrl,
+    homeResult.statusCode,
+    homeResult.responseTimeMs,
+  );
   const crawled: CrawledPage[] = [homePage];
   const visited = new Set<string>([startUrl]);
 
@@ -203,7 +306,12 @@ export async function runMiniCrawl(domain: string): Promise<ReportTechnicalHealt
         visited.add(link);
         const result = await fetchPage(link);
         if (!result) return null;
-        return analyzePage(result.html, link, result.statusCode, result.responseTimeMs);
+        return analyzePage(
+          result.html,
+          link,
+          result.statusCode,
+          result.responseTimeMs,
+        );
       }),
     );
     for (const page of results) {
@@ -218,7 +326,9 @@ export async function runMiniCrawl(domain: string): Promise<ReportTechnicalHealt
   }
 
   // 4. Detectar títulos duplicados
-  const titles = crawled.filter((p) => p.title).map((p) => ({ title: p.title, url: p.url }));
+  const titles = crawled
+    .filter((p) => p.title)
+    .map((p) => ({ title: p.title, url: p.url }));
   const titleMap = new Map<string, string[]>();
   for (const { title, url } of titles) {
     const existing = titleMap.get(title) ?? [];
@@ -240,7 +350,9 @@ export async function runMiniCrawl(domain: string): Promise<ReportTechnicalHealt
   }
 
   // 5. Detectar meta descriptions duplicadas
-  const metas = crawled.filter((p) => p.metaDescription).map((p) => ({ meta: p.metaDescription, url: p.url }));
+  const metas = crawled
+    .filter((p) => p.metaDescription)
+    .map((p) => ({ meta: p.metaDescription, url: p.url }));
   const metaMap = new Map<string, string[]>();
   for (const { meta, url } of metas) {
     const existing = metaMap.get(meta) ?? [];

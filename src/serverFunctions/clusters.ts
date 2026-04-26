@@ -13,11 +13,16 @@ import {
 import {
   buildCacheKey,
   getCached,
+  parseJson,
   setCached,
   CACHE_TTL_SECONDS,
 } from "@/server/lib/kv-cache";
 import { env } from "cloudflare:workers";
-import type { ClusterGroup, ClusterKeywordRow, ClusterPlan } from "@/types/clusters";
+import type {
+  ClusterGroup,
+  ClusterKeywordRow,
+  ClusterPlan,
+} from "@/types/clusters";
 import {
   clusterKeywords,
   calculatePriorityScore,
@@ -36,7 +41,7 @@ async function loadIndex(projectId: string): Promise<string[]> {
   const raw = await env.KV.get(indexKey(projectId), "text");
   if (!raw) return [];
   try {
-    return JSON.parse(raw) as string[];
+    return parseJson<string[]>(raw);
   } catch {
     return [];
   }
@@ -49,103 +54,120 @@ async function saveIndex(projectId: string, ids: string[]) {
 export const generateClusters = createServerFn({ method: "POST" })
   .middleware(authenticatedServerFunctionMiddleware)
   .inputValidator((data: unknown) => clusterSearchSchema.parse(data))
-  .handler(async ({ data }): Promise<{ clusters: ClusterGroup[]; pillarKeyword: string }> => {
-    // Check KV cache
-    const cacheKey = buildCacheKey("cluster:gen", {
-      keyword: data.keyword,
-      locationCode: data.locationCode,
-      languageCode: data.languageCode,
-    });
-
-    const cachedRaw = await getCached(cacheKey) as { clusters: ClusterGroup[]; pillarKeyword: string } | null;
-    if (cachedRaw && cachedRaw.clusters?.length > 0) {
-      console.log("[CLUSTERS] Serving from cache:", cachedRaw.clusters.length, "clusters");
-      return cachedRaw;
-    }
-
-    console.log("[CLUSTERS] Cache miss, calling DataForSEO...");
-
-    // Llamar en paralelo a suggestions + related
-    const [suggestionsRaw, relatedRaw] = await Promise.all([
-      fetchKeywordSuggestionsRaw(data.keyword, data.locationCode, data.languageCode, 150),
-      fetchRelatedKeywordsRaw(data.keyword, data.locationCode, data.languageCode, 150),
-    ]);
-
-    // Normalizar a formato uniforme y deduplicar
-    const keywordMap = new Map<string, ClusterKeywordRow>();
-
-    for (const item of suggestionsRaw) {
-      const kw = (item.keyword ?? "").toLowerCase().trim();
-      if (!kw || keywordMap.has(kw)) continue;
-      const vol = item.keyword_info?.search_volume ?? null;
-      const diff = item.keyword_properties?.keyword_difficulty ?? null;
-      const cpc = item.keyword_info?.cpc ?? null;
-      const intent = item.search_intent_info?.main_intent ?? null;
-      keywordMap.set(kw, {
-        keyword: kw,
-        searchVolume: vol,
-        keywordDifficulty: diff,
-        cpc,
-        intent,
-        priority: calculatePriorityScore(vol, diff, cpc),
+  .handler(
+    async ({
+      data,
+    }): Promise<{ clusters: ClusterGroup[]; pillarKeyword: string }> => {
+      // Check KV cache
+      const cacheKey = buildCacheKey("cluster:gen", {
+        keyword: data.keyword,
+        locationCode: data.locationCode,
+        languageCode: data.languageCode,
       });
-    }
 
-    for (const item of relatedRaw) {
-      // RelatedKeywordItem tiene datos dentro de keyword_data
-      const kd = item.keyword_data;
-      const kw = (kd?.keyword ?? "").toLowerCase().trim();
-      if (!kw || keywordMap.has(kw)) continue;
-      const vol = kd?.keyword_info?.search_volume ?? null;
-      const diff = kd?.keyword_properties?.keyword_difficulty ?? null;
-      const cpc = kd?.keyword_info?.cpc ?? null;
-      const intent = kd?.search_intent_info?.main_intent ?? null;
-      keywordMap.set(kw, {
-        keyword: kw,
-        searchVolume: vol,
-        keywordDifficulty: diff,
-        cpc,
-        intent,
-        priority: calculatePriorityScore(vol, diff, cpc),
-      });
-    }
+      const cachedRaw = await getCached<{
+        clusters: ClusterGroup[];
+        pillarKeyword: string;
+      }>(cacheKey);
+      if (cachedRaw && cachedRaw.clusters?.length > 0) {
+        return cachedRaw;
+      }
 
-    // Convertir a array para clusterKeywords
-    const allKeywords = [...keywordMap.values()];
+      // Llamar en paralelo a suggestions + related
+      const [suggestionsRaw, relatedRaw] = await Promise.all([
+        fetchKeywordSuggestionsRaw(
+          data.keyword,
+          data.locationCode,
+          data.languageCode,
+          150,
+        ),
+        fetchRelatedKeywordsRaw(
+          data.keyword,
+          data.locationCode,
+          data.languageCode,
+          150,
+        ),
+      ]);
 
-    // Aplicar clustering por bigrams (función pura, reutilizable en server)
-    const rawClusters = clusterKeywords(allKeywords, data.keyword);
+      // Normalizar a formato uniforme y deduplicar
+      const keywordMap = new Map<string, ClusterKeywordRow>();
 
-    // Mapear a nuestro tipo ClusterGroup con keywords detalladas
-    const clusters: ClusterGroup[] = rawClusters.map((c) => ({
-      name: c.name,
-      keywords: c.keywords.map((kw) => keywordMap.get(kw) ?? {
-        keyword: kw,
-        searchVolume: null,
-        keywordDifficulty: null,
-        cpc: null,
-        intent: null,
-        priority: null,
-      }),
-      totalVolume: c.totalVolume,
-      avgDifficulty: c.avgDifficulty,
-      avgCpc: c.avgCpc,
-      avgPriority: c.avgPriority,
-      count: c.count,
-    }));
+      for (const item of suggestionsRaw) {
+        const kw = (item.keyword ?? "").toLowerCase().trim();
+        if (!kw || keywordMap.has(kw)) continue;
+        const vol = item.keyword_info?.search_volume ?? null;
+        const diff = item.keyword_properties?.keyword_difficulty ?? null;
+        const cpc = item.keyword_info?.cpc ?? null;
+        const intent = item.search_intent_info?.main_intent ?? null;
+        keywordMap.set(kw, {
+          keyword: kw,
+          searchVolume: vol,
+          keywordDifficulty: diff,
+          cpc,
+          intent,
+          priority: calculatePriorityScore(vol, diff, cpc),
+        });
+      }
 
-    const result = { clusters, pillarKeyword: data.keyword };
+      for (const item of relatedRaw) {
+        // RelatedKeywordItem tiene datos dentro de keyword_data
+        const kd = item.keyword_data;
+        const kw = (kd?.keyword ?? "").toLowerCase().trim();
+        if (!kw || keywordMap.has(kw)) continue;
+        const vol = kd?.keyword_info?.search_volume ?? null;
+        const diff = kd?.keyword_properties?.keyword_difficulty ?? null;
+        const cpc = kd?.keyword_info?.cpc ?? null;
+        const intent = kd?.search_intent_info?.main_intent ?? null;
+        keywordMap.set(kw, {
+          keyword: kw,
+          searchVolume: vol,
+          keywordDifficulty: diff,
+          cpc,
+          intent,
+          priority: calculatePriorityScore(vol, diff, cpc),
+        });
+      }
 
-    // Cache
-    if (clusters.length > 0) {
-      await setCached(cacheKey, result, CACHE_TTL_SECONDS, {
-        label: `Clusters: ${data.keyword}`,
-        params: { keyword: data.keyword, locationCode: data.locationCode },
-      });
-    }
+      // Convertir a array para clusterKeywords
+      const allKeywords = [...keywordMap.values()];
 
-    return result;
-  });
+      // Aplicar clustering por bigrams (función pura, reutilizable en server)
+      const rawClusters = clusterKeywords(allKeywords, data.keyword);
+
+      // Mapear a nuestro tipo ClusterGroup con keywords detalladas
+      const clusters: ClusterGroup[] = rawClusters.map((c) => ({
+        name: c.name,
+        keywords: c.keywords.map(
+          (kw) =>
+            keywordMap.get(kw) ?? {
+              keyword: kw,
+              searchVolume: null,
+              keywordDifficulty: null,
+              cpc: null,
+              intent: null,
+              priority: null,
+            },
+        ),
+        totalVolume: c.totalVolume,
+        avgDifficulty: c.avgDifficulty,
+        avgCpc: c.avgCpc,
+        avgPriority: c.avgPriority,
+        count: c.count,
+      }));
+
+      const result = { clusters, pillarKeyword: data.keyword };
+
+      // Cache
+      if (clusters.length > 0) {
+        await setCached(cacheKey, result, CACHE_TTL_SECONDS, {
+          label: `Clusters: ${data.keyword}`,
+          params: { keyword: data.keyword, locationCode: data.locationCode },
+        });
+      }
+
+      return result;
+    },
+  );
 
 export const saveClusterPlan = createServerFn({ method: "POST" })
   .middleware(authenticatedServerFunctionMiddleware)
@@ -182,7 +204,7 @@ export const getClusterPlans = createServerFn({ method: "POST" })
       const raw = await env.KV.get(planKey(data.projectId, id), "text");
       if (raw) {
         try {
-          plans.push(JSON.parse(raw) as ClusterPlan);
+          plans.push(parseJson<ClusterPlan>(raw));
         } catch {
           // Skip corruptos
         }

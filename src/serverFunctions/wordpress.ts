@@ -8,6 +8,7 @@ import {
 } from "@/types/schemas/wordpress";
 import { env } from "cloudflare:workers";
 import type { WpConfig, WpPublishResult } from "@/types/wordpress";
+import { parseJson } from "@/server/lib/kv-cache";
 
 // KV key para config WP de un proyecto
 function configKey(projectId: string) {
@@ -26,7 +27,7 @@ async function loadConfig(projectId: string): Promise<WpConfigInternal | null> {
   const raw = await env.KV.get(configKey(projectId), "text");
   if (!raw) return null;
   try {
-    return JSON.parse(raw) as WpConfigInternal;
+    return parseJson<WpConfigInternal>(raw);
   } catch {
     return null;
   }
@@ -76,40 +77,47 @@ export const getWpConfig = createServerFn({ method: "POST" })
 export const testWpConnection = createServerFn({ method: "POST" })
   .middleware(authenticatedServerFunctionMiddleware)
   .inputValidator((data: unknown) => wpTestSchema.parse(data))
-  .handler(async ({ data }): Promise<{ success: boolean; message: string; siteName?: string }> => {
-    const config = await loadConfig(data.projectId);
-    if (!config) {
-      return { success: false, message: "No hay configuración de WordPress guardada" };
-    }
-
-    try {
-      const res = await fetch(`${config.wpUrl}/wp-json/wp/v2/users/me`, {
-        headers: {
-          Authorization: makeAuthHeader(config.wpUser, config.wpAppPassword),
-        },
-      });
-
-      if (!res.ok) {
-        const text = await res.text();
+  .handler(
+    async ({
+      data,
+    }): Promise<{ success: boolean; message: string; siteName?: string }> => {
+      const config = await loadConfig(data.projectId);
+      if (!config) {
         return {
           success: false,
-          message: `Error ${res.status}: ${text.slice(0, 200)}`,
+          message: "No hay configuración de WordPress guardada",
         };
       }
 
-      const user = await res.json() as { name?: string };
-      return {
-        success: true,
-        message: `Conectado como ${user.name ?? config.wpUser}`,
-        siteName: user.name,
-      };
-    } catch (err) {
-      return {
-        success: false,
-        message: `Error de conexión: ${err instanceof Error ? err.message : "desconocido"}`,
-      };
-    }
-  });
+      try {
+        const res = await fetch(`${config.wpUrl}/wp-json/wp/v2/users/me`, {
+          headers: {
+            Authorization: makeAuthHeader(config.wpUser, config.wpAppPassword),
+          },
+        });
+
+        if (!res.ok) {
+          const text = await res.text();
+          return {
+            success: false,
+            message: `Error ${res.status}: ${text.slice(0, 200)}`,
+          };
+        }
+
+        const user: { name?: string } = await res.json();
+        return {
+          success: true,
+          message: `Conectado como ${user.name ?? config.wpUser}`,
+          siteName: user.name,
+        };
+      } catch (err) {
+        return {
+          success: false,
+          message: `Error de conexión: ${err instanceof Error ? err.message : "desconocido"}`,
+        };
+      }
+    },
+  );
 
 export const publishToWordPress = createServerFn({ method: "POST" })
   .middleware(authenticatedServerFunctionMiddleware)
@@ -135,15 +143,17 @@ export const publishToWordPress = createServerFn({ method: "POST" })
 
     if (!res.ok) {
       const text = await res.text();
-      throw new Error(`WordPress API error ${res.status}: ${text.slice(0, 300)}`);
+      throw new Error(
+        `WordPress API error ${res.status}: ${text.slice(0, 300)}`,
+      );
     }
 
-    const post = await res.json() as {
+    const post: {
       id: number;
       link: string;
       status: string;
       _links?: { edit?: Array<{ href: string }> };
-    };
+    } = await res.json();
 
     return {
       postId: post.id,

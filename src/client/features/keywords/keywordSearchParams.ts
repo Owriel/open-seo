@@ -28,7 +28,9 @@ export function normalizeLegacyKeywordSearch(search: KeywordSearchParams): {
   const normalized: KeywordSearchParams = {
     ...search,
     q: search.q === "" ? undefined : search.q,
-    loc: search.loc === 2840 ? undefined : search.loc,
+    // 2724 = España es el default del producto; solo persistimos la loc
+    // en la URL cuando el usuario la cambia a otra.
+    loc: search.loc === 2724 ? undefined : search.loc,
     kLimit: search.kLimit === 150 ? undefined : search.kLimit,
     mode: search.mode === "auto" ? undefined : search.mode,
     sort: search.sort === "searchVolume" ? undefined : search.sort,

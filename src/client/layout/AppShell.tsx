@@ -1,81 +1,49 @@
 import * as React from "react";
 import { Link, Outlet } from "@tanstack/react-router";
-import {
-  AlertTriangle,
-  ChevronsUpDown,
-  ExternalLink,
-  Menu,
-} from "lucide-react";
+import { AlertTriangle, ChevronRight, ExternalLink, Menu } from "lucide-react";
 import { Sidebar } from "@/client/components/Sidebar";
-import { projectNavItems } from "@/client/navigation/items";
+import { findActiveNavEntry } from "@/client/navigation/items";
 
-export function TopNav({
+// Header mobile: hamburguesa + logo. Solo visible en <md.
+export function MobileHeader({
   drawerOpen,
-  projectId,
-  pathname,
   onOpenDrawer,
 }: {
   drawerOpen: boolean;
-  projectId: string | null;
-  pathname: string;
   onOpenDrawer: () => void;
 }) {
   return (
-    <div className="navbar bg-base-100 border-b border-base-300 shrink-0 gap-2">
-      <div className="flex-none flex items-center md:hidden">
-        <button
-          type="button"
-          className="btn btn-square btn-ghost"
-          aria-label="Toggle sidebar"
-          aria-expanded={drawerOpen}
-          onClick={onOpenDrawer}
-        >
-          <Menu className="h-6 w-6" />
-        </button>
-        <span className="font-semibold text-base-content ml-1">OpenSEO</span>
-      </div>
-
-      <div className="hidden md:flex items-center gap-1">
-        <span className="text-lg font-semibold text-base-content px-2">
-          OpenSEO
-        </span>
-        {projectId
-          ? projectNavItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = pathname.includes(item.matchSegment);
-              return (
-                <Link
-                  key={item.to}
-                  to={item.to}
-                  params={{ projectId }}
-                  className={`btn btn-sm gap-2 ${
-                    isActive
-                      ? "bg-primary/10 text-primary font-medium border-transparent"
-                      : "btn-ghost text-base-content/60 hover:text-base-content"
-                  }`}
-                >
-                  <Icon className="h-4 w-4" />
-                  {item.label}
-                </Link>
-              );
-            })
-          : null}
-      </div>
-
-      <div className="flex-1" />
-
-      <div className="flex-none hidden md:flex">
-        <div
-          className="tooltip tooltip-left before:whitespace-nowrap"
-          data-tip="Multiple projects coming soon"
-        >
-          <button className="btn btn-ghost btn-sm font-medium text-sm gap-1 cursor-default">
-            <span className="truncate">Default</span>
-            <ChevronsUpDown className="size-3.5 shrink-0 text-base-content/40" />
-          </button>
-        </div>
-      </div>
+    <div className="navbar bg-base-100 border-b border-base-300 shrink-0 md:hidden">
+      <button
+        type="button"
+        className="btn btn-square btn-ghost"
+        aria-label="Toggle sidebar"
+        aria-expanded={drawerOpen}
+        onClick={onOpenDrawer}
+      >
+        <Menu className="h-6 w-6" />
+      </button>
+      <span className="font-semibold text-base-content ml-1">OpenSEO</span>
     </div>
+  );
+}
+
+// Breadcrumbs: "OpenSEO > Categoria > Item". Solo si hay match.
+export function Breadcrumbs({ currentPath }: { currentPath: string }) {
+  const active = findActiveNavEntry(currentPath);
+  if (!active) return null;
+
+  return (
+    <nav
+      aria-label="Breadcrumb"
+      className="hidden md:flex items-center gap-1.5 px-6 py-2.5 text-xs text-base-content/60 border-b border-base-300 bg-base-100 shrink-0"
+    >
+      <span>OpenSEO</span>
+      <ChevronRight className="size-3 text-base-content/30" />
+      <span>{active.category.label}</span>
+      <ChevronRight className="size-3 text-base-content/30" />
+      <span className="text-base-content font-medium">{active.item.label}</span>
+    </nav>
   );
 }
 
@@ -129,48 +97,58 @@ export function SeoApiStatusBanners({
   );
 }
 
+// Layout principal de la app: sidebar fija a la izquierda en desktop,
+// drawer en mobile. La columna derecha contiene banners + breadcrumbs + Outlet.
 export function AppContent({
   drawerOpen,
   pathname,
   projectId,
   onCloseDrawer,
+  banners,
 }: {
   drawerOpen: boolean;
   pathname: string;
   projectId: string | null;
   onCloseDrawer: () => void;
+  // Slot para los banners de estado (warnings API) que deben ir sobre el contenido
+  banners?: React.ReactNode;
 }) {
   return (
-    <>
-      <div className="flex-1 min-h-0 md:hidden">
-        <div className="h-full overflow-auto">
+    <div className="flex flex-1 min-h-0">
+      {/* Sidebar fijo en desktop */}
+      <div className="hidden md:block shrink-0">
+        <Sidebar currentPath={pathname} projectId={projectId} />
+      </div>
+
+      {/* Columna principal */}
+      <main className="flex-1 min-w-0 flex flex-col overflow-hidden">
+        <Breadcrumbs currentPath={pathname} />
+        {banners}
+        <div className="flex-1 min-h-0 overflow-auto">
           <Outlet />
         </div>
+      </main>
 
-        {drawerOpen ? (
-          <div className="fixed inset-0 z-50">
-            <button
-              type="button"
-              aria-label="Close sidebar"
-              className="absolute inset-0 bg-black/45"
-              onClick={onCloseDrawer}
+      {/* Drawer mobile */}
+      {drawerOpen ? (
+        <div className="fixed inset-0 z-50 md:hidden">
+          <button
+            type="button"
+            aria-label="Close sidebar"
+            className="absolute inset-0 bg-black/45"
+            onClick={onCloseDrawer}
+          />
+          <div className="absolute left-0 top-0 h-full">
+            <Sidebar
+              currentPath={pathname}
+              projectId={projectId}
+              onNavigate={onCloseDrawer}
+              onClose={onCloseDrawer}
             />
-            <div className="absolute left-0 top-0 h-full">
-              <Sidebar
-                currentPath={pathname}
-                projectId={projectId}
-                onNavigate={onCloseDrawer}
-                onClose={onCloseDrawer}
-              />
-            </div>
           </div>
-        ) : null}
-      </div>
-
-      <div className="hidden md:block flex-1 min-h-0 overflow-auto">
-        <Outlet />
-      </div>
-    </>
+        </div>
+      ) : null}
+    </div>
   );
 }
 
